@@ -1,4 +1,4 @@
-"clinic_id","id","clinic_support","clinic_deprivation","age","sex","socioeconomic_position","asbestos_exposure","unmeasured_health_risk","cigarettes_per_day","morning_urgency","withdrawal_score","previous_pack_years","cessation","later_tobacco_exposure","lung_cancer_complete","followup_observed","lung_cancer"
+"clinic_id","id","clinic_support","clinic_deprivation","age","sex","socioeconomic_position","asbestos_exposure","unmeasured_health_risk","cigarettes_per_day","morning_urgency","withdrawal_score","previous_pack_years","cessation","later_tobacco_exposure","lung_cancer_complete","followup_status","lung_cancer"
 1,1,0.850055696446355,0.0525868752954918,39.4,"female",-1.39,0,0,21,7.7,10,23.8,1,9.1,0,0,
 1,2,0.850055696446355,0.0525868752954918,40,"male",-0.73,0,0,14,6.8,6,17.7,0,9.9,0,1,0
 1,3,0.850055696446355,0.0525868752954918,30,"female",-1.21,1,0,7,4,7.8,13.9,0,5.7,0,1,0
