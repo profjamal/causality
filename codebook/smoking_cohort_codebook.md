@@ -1,30 +1,48 @@
 # Smoking cohort demonstration data: codebook
 
-This completely synthetic dataset contains 3,000 fictional current smokers nested within 30 clinics. It was generated for the R practicals in *Causality in Epidemiology*. No record represents a real person.
+Revision: 28 October 2026. Completely synthetic data: 3,000 fictional baseline smokers in 30 clinics. No record represents a real person. The monthly cigarette-use values, exposure and outcomes are generated for teaching, not clinical inference.
 
-| Variable | Description | Type or coding | Main teaching role |
-|---|---|---|---|
-| `id` | Fictional participant identifier | Integer | Record identifier |
-| `clinic_id` | Clinic in which the person receives care | Integer, 1–30 | Clustering or multilevel structure |
-| `clinic_support` | Availability of cessation support at the clinic | Continuous standardized score | Contextual cause of cessation |
-| `clinic_deprivation` | Deprivation surrounding the clinic | Continuous standardized score | Contextual common cause |
-| `age` | Age at baseline | Years | Baseline confounder |
-| `sex` | Recorded sex | `female`, `male` | Baseline characteristic |
-| `socioeconomic_position` | Individual socioeconomic position | Continuous standardized score; higher means more advantaged | Baseline confounder |
-| `asbestos_exposure` | Previous occupational asbestos exposure | 0 = no, 1 = yes | Proposed moderator and cause of lung cancer |
-| `unmeasured_health_risk` | Simulated baseline health risk deliberately omitted from primary models | 0 = no, 1 = yes | Residual-confounding and sensitivity teaching |
-| `cigarettes_per_day` | Cigarettes smoked per day at baseline | Count | Indicator of latent nicotine dependence |
-| `morning_urgency` | Urgency to smoke after waking | Score, 0–10 | Indicator of latent nicotine dependence |
-| `withdrawal_score` | Withdrawal symptoms | Score, 0–20 | Indicator of latent nicotine dependence |
-| `previous_pack_years` | Smoking accumulated before baseline | Pack-years | Baseline confounder |
-| `cessation` | Sustained smoking cessation beginning at baseline | 0 = continued smoking, 1 = cessation | Exposure or intervention of interest |
-| `later_tobacco_exposure` | Tobacco exposure after the baseline cessation decision | Continuous score | Mediator |
-| `lung_cancer_complete` | Simulated outcome before missingness was introduced | 0 = no, 1 = yes | Simulation truth; not for primary analysis |
-| `followup_observed` | Whether lung-cancer status was observed | 0 = missing, 1 = observed | Missingness or selection indicator |
-| `lung_cancer` | Observed lung-cancer outcome | 0 = no, 1 = yes, blank = missing | Primary outcome |
+## Time order and measurement
 
-## Important teaching note
+Baseline information is recorded before the exposure classification. `cessation = 1` means seven-day smoking abstinence achieved at the baseline visit; `0` means smoking at that visit. Later relapse or quitting can occur. This variable does not guarantee sustained abstinence.
 
-The variables `unmeasured_health_risk` and `lung_cancer_complete` would not normally be available in a real study. They are retained so learners can compare an analysis with the known data-generating process. They should be excluded from the primary causal analysis.
+At each of months 1-12, the fictional participant reports average cigarettes smoked per day during that month. `cigs_m01` to `cigs_m12` contain these simulated monthly values, including zero for a smoke-free month. `later_tobacco_exposure` is their equal-month arithmetic mean, rounded to one decimal place. It is measured in **cigarettes/day**, not a unitless score or pack-years. Six months at zero and six months at 10 cigarettes/day give 5 cigarettes/day. This is a defined teaching measurement protocol, not an existing validated instrument.
 
-The causal role of a variable depends on the causal question. The roles above refer to the book’s principal comparison of sustained smoking cessation versus continued smoking and subsequent lung-cancer risk.
+Lung cancer is generated after the first-year mediator window, through year 20. The complete simulated outcome is available for the introductory mediation exercise. A separate column deliberately hides some outcomes for the missing-data and selection exercises.
+
+| Variable | Definition / unit | Role |
+|---|---|---|
+| `id` | Unique fictional participant ID, 1-3000 | Identifier |
+| `clinic_id` | Clinic ID, 1-30 | Clustering |
+| `clinic_support` | Simulated baseline support score | Contextual cause |
+| `clinic_deprivation` | Simulated baseline deprivation score | Contextual cause |
+| `age` | Age at baseline, years | Baseline covariate |
+| `sex` | female / male | Baseline covariate |
+| `socioeconomic_position` | Simulated baseline score; higher = more advantaged | Baseline covariate |
+| `asbestos_exposure` | Previous occupational exposure: 0 = no, 1 = yes | Cause of cancer / effect modifier |
+| `unmeasured_health_risk` | Simulated hidden risk: 0 = absent, 1 = present | Omitted-cause sensitivity exercise |
+| `cigarettes_per_day` | Cigarettes/day before baseline cessation | Nicotine-dependence indicator |
+| `morning_urgency` | Simulated score, 0-10 | Nicotine-dependence indicator |
+| `withdrawal_score` | Simulated score, 0-20 | Nicotine-dependence indicator |
+| `previous_pack_years` | Cumulative smoking before baseline, pack-years | Baseline covariate |
+| `cessation` | Seven-day abstinence at baseline: 1 = yes, 0 = smoking at baseline; relapse is allowed later | Exposure |
+| `cigs_m01` through `cigs_m12` | Average cigarettes/day for each of months 1-12; zero for a smoke-free month | Monthly mediator measurements |
+| `later_tobacco_exposure` | Mean of the 12 monthly values, rounded to one decimal; cigarettes/day | Mediator |
+| `lung_cancer_complete` | Cancer after year 1 through year 20: 0 = no, 1 = yes, fully observed in the simulation | Complete-data mediation outcome |
+| `followup_status` | Whether the cancer outcome is observed: 1 = yes, 0 = no | Missingness indicator |
+| `lung_cancer` | Same cancer outcome, but blank when followup_status = 0 | Missing-data / selection outcome |
+
+The dataset has 30 columns. All variables except `lung_cancer` are complete. Keep the hidden health-risk variable out of the primary working models unless explicitly studying sensitivity to that omitted cause. Using `lung_cancer_complete` in the mediation lesson is a deliberate complete-data teaching choice, not a way to repair missing outcomes in a real study.
+
+## Reproduce and verify
+
+Run `scripts/generate_demo_data.R` from the repository root. Its fixed seed reproduces the CSV. The local Quarto project uses the equivalent script `scripts/generate-demo-data.R`.
+
+```r
+dat <- read.csv("data/smoking_cohort_demo.csv")
+months <- sprintf("cigs_m%02d", 1:12)
+stopifnot(all(dat$later_tobacco_exposure ==
+              round(rowMeans(dat[months]), 1)))
+```
+
+This revision regenerates cigarette-use trajectories and cancer outcomes; previous numerical results must be recalculated. Baseline covariates and the baseline cessation classification are generated by the previous equations with the same seed. The data-generating mechanism still includes intentionally omitted causes. Correct units alone do not identify causal effects. Zero-heavy monthly consumption also requires checking the linear mediator model used for the introductory exercise.

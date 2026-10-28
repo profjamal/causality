@@ -62,11 +62,26 @@ demo$cessation <- rbinom(
            0.7 * nicotine_dependence -
            0.25 * demo$unmeasured_health_risk)
 )
-demo$later_tobacco_exposure <- round(pmax(
-  0,
-  11 - 7.5 * demo$cessation + 3.5 * nicotine_dependence +
-    0.12 * demo$previous_pack_years + rnorm(n, 0, 2.5)
-), 1)
+# cessation = 1 means seven-day abstinence achieved at the baseline visit.
+# It does NOT mean guaranteed sustained abstinence: relapse can occur later.
+# At months 1-12, simulate the reported average cigarettes/day for that month.
+# A monthly value of zero represents no smoking throughout that month.
+# These are fictional monthly reports, not a validated questionnaire or biomarker.
+smoking <- 1 - demo$cessation
+monthly <- matrix(0, nrow = n, ncol = 12)
+for (month in 1:12) {
+  relapse <- rbinom(n, 1, plogis(-2.8 + 0.45 * nicotine_dependence))
+  quit <- rbinom(n, 1, plogis(-4.2 - 0.30 * nicotine_dependence))
+  smoking <- ifelse(smoking == 0, relapse, 1 - quit)
+  intensity <- pmax(1, demo$cigarettes_per_day + rnorm(n, 0, 2.5))
+  monthly[, month] <- ifelse(smoking == 1, round(intensity, 1), 0)
+}
+colnames(monthly) <- sprintf("cigs_m%02d", 1:12)
+demo <- cbind(demo, as.data.frame(monthly))
+# Equal-month mean of the 12 monthly average daily consumption values.
+# Retain the existing column name for compatibility; its unit is now cigarettes/day.
+demo$later_tobacco_exposure <- round(rowMeans(monthly), 1)
+# Cancer is generated AFTER the first-year measurement window, through year 20.
 
 demo$lung_cancer_complete <- rbinom(
   n, 1,
@@ -79,14 +94,15 @@ demo$lung_cancer_complete <- rbinom(
            0.55 * demo$unmeasured_health_risk)
 )
 
-demo$followup_observed <- rbinom(
+demo$followup_status <- rbinom(
   n, 1,
   plogis(1.8 + 0.35 * demo$cessation -
            0.025 * demo$previous_pack_years -
            0.50 * demo$unmeasured_health_risk)
 )
 demo$lung_cancer <- demo$lung_cancer_complete
-demo$lung_cancer[demo$followup_observed == 0] <- NA
+demo$lung_cancer[demo$followup_status == 0] <- NA
 
+dir.create("data", showWarnings = FALSE)
 write.csv(demo, "data/smoking_cohort_demo.csv", row.names = FALSE, na = "")
 

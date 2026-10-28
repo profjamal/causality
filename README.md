@@ -1,27 +1,28 @@
 # Causality in Epidemiology
 
-Teaching resources for *Causality in Epidemiology* by Jamalludin Ab Rahman, Kulliyyah of Medicine, International Islamic University Malaysia (IIUM).
+Teaching resources by Jamalludin Ab Rahman, Kulliyyah of Medicine, International Islamic University Malaysia (IIUM).
 
-## Demonstration dataset
+## Synthetic cohort: revised 28 October 2026
 
-The repository contains a synthetic longitudinal cohort used to explain causal inference with R. It includes baseline confounders, smoking cessation, later tobacco exposure as a mediator, asbestos exposure as a moderator, missing outcomes, clinic-level variables, and indicators for a latent nicotine-dependence construct.
+3,000 fictional baseline smokers nested in 30 clinics. No real participants; do not use these data as clinical or policy evidence.
 
-The dataset contains no real participants and must not be used for clinical or policy decisions.
+The mediator `later_tobacco_exposure` now measures **average cigarettes/day during months 1-12**, calculated from the 12 monthly values `cigs_m01` through `cigs_m12`. It is no longer a unitless score. The monthly cigarette-use values and cancer outcomes were regenerated, so earlier numerical results must be recalculated.
 
-## Repository structure
+`cessation` means seven-day smoking abstinence achieved at the baseline visit; later relapse or quitting is possible. Cancer is assessed after the first-year mediator window through year 20.
 
-- `data/smoking_cohort_demo.csv`: synthetic cohort of 3,000 current smokers.
-- `scripts/generate_demo_data.R`: reproducible data-generating script.
-- `codebook/smoking_cohort_codebook.md`: variable definitions and teaching roles.
+Use `lung_cancer_complete` for the complete-data introductory mediation exercise; use `lung_cancer` for the selection and missing-data lessons. The generator includes omitted causes for sensitivity exercises; a model fitted to these data is not automatically causally identified.
 
-## Import into R
+## Files
+
+- `data/smoking_cohort_demo.csv`: revised 3,000-row, 30-column dataset.
+- `scripts/generate_demo_data.R`: reproducible generator, seed 8311.
+- `codebook/smoking_cohort_codebook.md`: measurement definitions and teaching roles.
+
+## Import
 
 ```r
-data_url <- paste0(
-  "https://raw.githubusercontent.com/profjamal/",
-  "causality/main/data/smoking_cohort_demo.csv"
-)
-demo <- read.csv(data_url)
+url <- "https://raw.githubusercontent.com/profjamal/causality/main/data/smoking_cohort_demo.csv"
+dat <- read.csv(url)
 ```
 
-An internet connection is required for direct import. The accompanying Quarto book project also contains a local copy for offline use.
+Direct import needs internet. The Quarto book also includes a matching local copy for reproducible offline analysis. Run the generator from the repository root to recreate the CSV.
