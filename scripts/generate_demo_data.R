@@ -25,32 +25,34 @@ demo <- demo[order(demo$id), ]
 
 demo$age <- round(pmin(65, pmax(30, rnorm(n, 47, 8))), 1)
 demo$sex <- factor(rbinom(n, 1, 0.46), labels = c("female", "male"))
-demo$socioeconomic_position <- round(
+# Internal centred log-income variable; not a measured or exported SES scale.
+# Exponentiating later creates positive annual RM/person values.
+log_income <- round(
   rnorm(n, -0.35 * demo$clinic_deprivation, 1), 2
 )
 demo$asbestos_exposure <- rbinom(
   n, 1,
   plogis(-1.7 + 0.45 * (demo$sex == "male") -
-           0.25 * demo$socioeconomic_position)
+           0.25 * log_income)
 )
 
 # Included only so the true data-generating process is documented.
 # It is deliberately omitted from the main adjusted analyses.
 demo$unmeasured_health_risk <- rbinom(
-  n, 1, plogis(-0.8 - 0.3 * demo$socioeconomic_position)
+  n, 1, plogis(-0.8 - 0.3 * log_income)
 )
 
 nicotine_dependence <- rnorm(
   n,
   0.25 * demo$clinic_deprivation -
-    0.25 * demo$socioeconomic_position +
+    0.25 * log_income +
     0.35 * demo$unmeasured_health_risk,
   1
 )
 demo$cigarettes_per_day <- round(pmax(1, 16 + 5 * nicotine_dependence + rnorm(n, 0, 3)))
 demo$morning_urgency <- round(pmin(10, pmax(0, 5 + 2 * nicotine_dependence + rnorm(n))), 1)
 demo$withdrawal_score <- round(pmin(20, pmax(0, 9 + 3 * nicotine_dependence + rnorm(n, 0, 2))), 1)
-demo$previous_pack_years <- round(pmax(
+demo$pack_yr <- round(pmax(
   0,
   18 + 0.35 * (demo$age - 30) + 6 * nicotine_dependence + rnorm(n, 0, 6)
 ), 1)
@@ -58,7 +60,7 @@ demo$previous_pack_years <- round(pmax(
 demo$cessation <- rbinom(
   n, 1,
   plogis(-0.1 + 0.65 * demo$clinic_support +
-           0.25 * demo$socioeconomic_position -
+           0.25 * log_income -
            0.7 * nicotine_dependence -
            0.25 * demo$unmeasured_health_risk)
 )
@@ -87,7 +89,7 @@ demo$lung_cancer_complete <- rbinom(
   n, 1,
   plogis(-4.1 - 0.20 * demo$cessation +
            0.095 * demo$later_tobacco_exposure +
-           0.035 * demo$previous_pack_years +
+           0.035 * demo$pack_yr +
            0.50 * demo$asbestos_exposure -
            0.30 * demo$cessation * demo$asbestos_exposure +
            0.018 * (demo$age - 45) +
@@ -97,11 +99,26 @@ demo$lung_cancer_complete <- rbinom(
 demo$followup_status <- rbinom(
   n, 1,
   plogis(1.8 + 0.35 * demo$cessation -
-           0.025 * demo$previous_pack_years -
+           0.025 * demo$pack_yr -
            0.50 * demo$unmeasured_health_risk)
 )
 demo$lung_cancer <- demo$lung_cancer_complete
 demo$lung_cancer[demo$followup_status == 0] <- NA
+
+# Annual household-income teaching protocol (synthetic, not Malaysian norms).
+# An individual's latent log-income sets annual income per person.
+# A separate seed for household size preserves all earlier smoking/cancer draws.
+demo$income_pc <- round(30000 * exp(0.5 * log_income))
+set.seed(8312)
+demo$hh_size <- sample(1:6, n, replace = TRUE,
+                       prob = c(0.10, 0.20, 0.25, 0.25, 0.15, 0.05))
+demo$hh_income <- demo$income_pc * demo$hh_size
+# Students can verify income_pc = annual household income / household members.
+# Put the income variables together near the other baseline characteristics.
+base_names <- names(demo)[!names(demo) %in% c("income_pc", "hh_income", "hh_size")]
+pos <- match("sex", base_names)
+demo <- demo[c(base_names[1:pos], "hh_income", "hh_size", "income_pc",
+               base_names[(pos + 1):length(base_names)])]
 
 dir.create("data", showWarnings = FALSE)
 write.csv(demo, "data/smoking_cohort_demo.csv", row.names = FALSE, na = "")

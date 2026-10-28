@@ -1,28 +1,34 @@
 # Causality in Epidemiology
 
-Teaching resources by Jamalludin Ab Rahman, Kulliyyah of Medicine, International Islamic University Malaysia (IIUM).
+Teaching resources by Jamalludin Ab Rahman, Kulliyyah of Medicine, IIUM.
 
-## Synthetic cohort: revised 28 October 2026
+## Revised synthetic cohort 29 October 2026
 
-3,000 fictional baseline smokers nested in 30 clinics. No real participants; do not use these data as clinical or policy evidence.
+3,000 fictional baseline smokers in 30 clinics, 32 columns. No real participants.
 
-The mediator `later_tobacco_exposure` now measures **average cigarettes/day during months 1-12**, calculated from the 12 monthly values `cigs_m01` through `cigs_m12`. It is no longer a unitless score. The monthly cigarette-use values and cancer outcomes were regenerated, so earlier numerical results must be recalculated.
+- `pack_yr`: cumulative smoking before baseline, in pack-years.
+- `income_pc`: annual household income per member, RM/person/year.
+- `hh_income`: gross household income from all sources over the preceding 12 months, RM/year.
+- `hh_size`: usual household members at baseline, including children, integer 1-6.
 
-`cessation` means seven-day smoking abstinence achieved at the baseline visit; later relapse or quitting is possible. Cancer is assessed after the first-year mediator window through year 20.
+`income_pc = hh_income / hh_size`. For example, RM120,000/year divided by four members is RM30,000/person/year. All values are generated for teaching, not measured in a real survey and not Malaysian income norms. The old unitless socioeconomic score is not exported. `pack_yr` replaces the former `previous_pack_years` column; update old scripts to the current names.
 
-Use `lung_cancer_complete` for the complete-data introductory mediation exercise; use `lung_cancer` for the selection and missing-data lessons. The generator includes omitted causes for sensitivity exercises; a model fitted to these data is not automatically causally identified.
+The generator uses an illustrative log-income distribution centred on RM30,000/person/year and a separate household-size seed. The smoking histories, cessation classification and cancer outcomes from the October 28 revision are preserved, but adjusted model estimates must be recalculated with the new income variable.
+
+Cessation means seven-day abstinence at baseline; later relapse or quitting is possible. `later_tobacco_exposure` is average cigarettes/day across months 1-12. Cancer is generated after that first-year window through year 20.
+
+Use `lung_cancer_complete` for complete-data teaching examples. Use `lung_cancer`, retaining its NAs, for selection and missing-data lessons. Models include deliberately omitted causes and do not identify causal effects automatically.
 
 ## Files
 
-- `data/smoking_cohort_demo.csv`: revised 3,000-row, 30-column dataset.
-- `scripts/generate_demo_data.R`: reproducible generator, seed 8311.
-- `codebook/smoking_cohort_codebook.md`: measurement definitions and teaching roles.
-
-## Import
+- `data/smoking_cohort_demo.csv`: current 3,000-row, 32-column dataset.
+- `scripts/generate_demo_data.R`: reproducible generator, seeds 8311 and 8312.
+- `codebook/smoking_cohort_codebook.md`: definitions, units and teaching roles.
 
 ```r
 url <- "https://raw.githubusercontent.com/profjamal/causality/main/data/smoking_cohort_demo.csv"
 dat <- read.csv(url)
+stopifnot(all(dat$income_pc == dat$hh_income / dat$hh_size))
 ```
 
-Direct import needs internet. The Quarto book also includes a matching local copy for reproducible offline analysis. Run the generator from the repository root to recreate the CSV.
+The book and practical packages include the same CSV for offline use.
