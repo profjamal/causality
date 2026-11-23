@@ -57,6 +57,6 @@ stopifnot(all(dat$later_tobacco_exposure ==
 
 The October 28 revision regenerated cigarette-use trajectories and cancer outcomes. The October 29 income revision preserves those trajectories and outcomes but changes the income adjustment variable, so model results must be recalculated. The data-generating mechanism still includes intentionally omitted causes. Correct units alone do not identify causal effects. Zero-heavy monthly consumption also requires checking the linear mediator model used for the introductory exercise.
 
-## Binary mediator used in the revised mediation example
+## Mediation example
 
-Derive abstinent = as.integer(cigs_m12 == 0). It indicates no smoking during month 12, not continuous abstinence during the first year. The complete cohort, all monthly values, and cancer outcomes are unchanged. Both mediator and outcome models use logistic regression. Month-12 status is a proxy for the smoking trajectory; the generator uses average first-year consumption, so working-model natural effects require strong additional assumptions and do not establish a causal effect of setting the snapshot indicator. See data/smoking_mediation_definition.txt.
+The primary mediator remains later_tobacco_exposure: average cigarettes/day during months 1–12. No raw values have changed. A simple linear mediator model is a teaching approximation for these zero-heavy data and does not provide a validated causal decomposition; see data/smoking_mediation_definition.txt.
