@@ -1,0 +1,22 @@
+Synthetic walking programme cohort
+1000 fictional independent adults; one row per person; no missing values.
+This is not a randomised trial: enrolment depends on baseline measurements.
+
+id: fictional participant identifier.
+programme: baseline enrolment; 0 = no programme, 1 = walking programme.
+age: age in years before enrolment.
+baseline_activity: average moderate activity, minutes/week, before enrolment.
+baseline_sbp: systolic blood pressure in mmHg before enrolment.
+activity_3mo: average moderate activity, minutes/week, during months 1–3.
+sbp_6mo: systolic blood pressure in mmHg at six months.
+
+Time order: baseline covariates -> enrolment -> months 1–3 activity -> six-month BP.
+Working adjustment set in both models: age, baseline activity and baseline SBP.
+The generator uses linear additive normal-error models without exposure-mediator
+interaction, missing data, measurement error or omitted common causes.
+Model diagnostics do not establish causal assumptions in real research.
+Activity is a continuous average, not a count. Values are not rounded or clipped.
+Effects are mean BP differences in mmHg, not odds ratios or risk differences.
+Known generating indirect effect = 45 * -0.06 = -2.7 mmHg; direct = -2;
+total = -4.7. Estimated effects will differ because of sampling variation.
+Generator: generate_walking_data.R, seed 8311. Values are illustrative, not clinical evidence.
