@@ -1,6 +1,6 @@
 # Smoking cohort demonstration data: codebook
 
-Revision: 29 October 2026. Completely synthetic data: 3,000 fictional baseline smokers in 30 clinics. No record represents a real person. The monthly cigarette-use values, exposure and outcomes are generated for teaching, not clinical inference.
+Revision: 23 November 2026. Completely synthetic data: 3,000 fictional baseline smokers in 30 clinics. No record represents a real person. The monthly cigarette-use values, exposure and outcomes are generated for teaching, not clinical inference.
 
 ## Time order and measurement
 
@@ -29,12 +29,13 @@ Lung cancer is generated after the first-year mediator window, through year 20. 
 | `pack_yr` | Cumulative smoking before baseline, pack-years | Baseline covariate |
 | `cessation` | Seven-day abstinence at baseline: 1 = yes, 0 = smoking at baseline; relapse is allowed later | Exposure |
 | `cigs_m01` through `cigs_m12` | Average cigarettes/day for each of months 1-12; zero for a smoke-free month | Monthly mediator measurements |
-| `later_tobacco_exposure` | Mean of the 12 monthly values, rounded to one decimal; cigarettes/day | Mediator |
+| sustained_abstinence | 1 = zero reported smoking in every month 2–12; 0 = any smoking in those months; month 1 is a grace period | Binary mediator |
+| `later_tobacco_exposure` | Mean of the 12 monthly values, rounded to one decimal; cigarettes/day | Descriptive follow-up consumption |
 | `lung_cancer_complete` | Cancer after year 1 through year 20: 0 = no, 1 = yes, fully observed in the simulation | Complete-data teaching outcome |
 | `followup_status` | Whether the cancer outcome is observed: 1 = yes, 0 = no | Missingness indicator |
 | `lung_cancer` | Same cancer outcome, but blank when followup_status = 0 | Missing-data / selection outcome |
 
-The dataset has 32 columns. All variables except `lung_cancer` are complete. Keep the hidden health-risk variable out of the primary working models unless explicitly studying sensitivity to that omitted cause. Using `lung_cancer_complete` in complete-data lessons is a deliberate complete-data teaching choice, not a way to repair missing outcomes in a real study.
+The dataset has 33 columns. All variables except `lung_cancer` are complete. Keep the hidden health-risk variable out of the primary working models unless explicitly studying sensitivity to that omitted cause. Using `lung_cancer_complete` in complete-data lessons is a deliberate complete-data teaching choice, not a way to repair missing outcomes in a real study.
 
 ## Annual income per capita
 
@@ -57,6 +58,14 @@ stopifnot(all(dat$later_tobacco_exposure ==
 
 The October 28 revision regenerated cigarette-use trajectories and cancer outcomes. The October 29 income revision preserves those trajectories and outcomes but changes the income adjustment variable, so model results must be recalculated. The data-generating mechanism still includes intentionally omitted causes. Correct units alone do not identify causal effects. Zero-heavy monthly consumption also requires checking the linear mediator model used for the introductory exercise.
 
-## Mediation example
+## Revised abstinence pathway
 
-The primary mediator remains later_tobacco_exposure: average cigarettes/day during months 1–12. No raw values have changed. A simple linear mediator model is a teaching approximation for these zero-heavy data and does not provide a validated causal decomposition; see data/smoking_mediation_definition.txt.
+sustained_abstinence is 1 when every cigs_m02 through cigs_m12 value is zero and 0 otherwise. Month 1 is a grace period. Baseline seven-day cessation is a different variable; some baseline smokers quit during month 1, and some baseline quitters subsequently relapse.
+
+The fixed-seed generator first assigns the binary follow-up state from baseline cessation, age, prior pack-years and income, then produces compatible monthly reports. The cancer model includes sustained abstinence, other cessation pathways, age, prior pack-years, income, asbestos exposure, a cessation-by-asbestos interaction and the intentionally omitted health-risk cause. This is a simplified fictional mechanism, not evidence about clinical effect sizes or guaranteed later abstinence.
+
+The dataset has 3,000 records and 33 columns; 405 complete cancer events; 734 observed cancer outcomes are missing. All baseline data, participants and income definitions are preserved. Smoking trajectories, complete cancer outcomes and observation flags were regenerated with the same fixed seed. Do not mix outputs from the October version with this revision. All actual numerical results must be rerun.
+
+Known relationships: 335/1446 baseline smokers and 1047/1554 baseline quitters achieve sustained abstinence. Prior asbestos exposure modifies the cessation effect on the log-odds scale. Later tobacco consumption is retained as a descriptive average; the primary mediation analysis now uses a binary mediator and two logistic regressions.
+
+These monthly entries are simulated self-reports, not biomarkers. Real studies require clear lapse rules, repeated assessment, suitable validation and longer-term smoking histories.

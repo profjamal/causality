@@ -64,36 +64,55 @@ demo$cessation <- rbinom(
            0.7 * nicotine_dependence -
            0.25 * demo$unmeasured_health_risk)
 )
-# cessation = 1 means seven-day abstinence achieved at the baseline visit.
-# It does NOT mean guaranteed sustained abstinence: relapse can occur later.
-# At months 1-12, simulate the reported average cigarettes/day for that month.
-# A monthly value of zero represents no smoking throughout that month.
-# These are fictional monthly reports, not a validated questionnaire or biomarker.
+# Baseline cessation means seven-day abstinence at enrolment.
+# Month 1 is a grace period. Continuous abstinence in months 2–12
+# is a distinct follow-up state, not merely abstinence at one visit.
+# A baseline smoker may quit during month 1; a baseline quitter may relapse.
+income_for_model <- round(30000 * exp(0.5 * log_income))
+demo$sustained_abstinence <- rbinom(
+ n, 1, plogis(-1.25 + 1.9 * demo$cessation -
+              0.015 * (demo$age - 47) -
+              0.018 * (demo$pack_yr - 25) +
+              0.000004 * (income_for_model - 30000))
+)
 smoking <- 1 - demo$cessation
-monthly <- matrix(0, nrow = n, ncol = 12)
+monthly <- matrix(0, nrow=n, ncol=12)
 for (month in 1:12) {
-  relapse <- rbinom(n, 1, plogis(-2.8 + 0.45 * nicotine_dependence))
-  quit <- rbinom(n, 1, plogis(-4.2 - 0.30 * nicotine_dependence))
-  smoking <- ifelse(smoking == 0, relapse, 1 - quit)
-  intensity <- pmax(1, demo$cigarettes_per_day + rnorm(n, 0, 2.5))
-  monthly[, month] <- ifelse(smoking == 1, round(intensity, 1), 0)
+ relapse <- rbinom(n, 1, plogis(-2.5 + 0.3 * nicotine_dependence))
+ quit <- rbinom(n, 1, plogis(-3.5 - 0.2 * nicotine_dependence))
+ smoking <- ifelse(smoking == 0, relapse, 1 - quit)
+ intensity <- pmax(1, demo$cigarettes_per_day + rnorm(n, 0, 2.5))
+ monthly[,month] <- ifelse(smoking == 1, round(intensity,1), 0)
 }
-colnames(monthly) <- sprintf("cigs_m%02d", 1:12)
-demo <- cbind(demo, as.data.frame(monthly))
-# Equal-month mean of the 12 monthly average daily consumption values.
-# Retain the existing column name for compatibility; its unit is now cigarettes/day.
-demo$later_tobacco_exposure <- round(rowMeans(monthly), 1)
-# Cancer is generated AFTER the first-year measurement window, through year 20.
-
+# The sustained state defines the months 2–12 trajectory.
+monthly[demo$sustained_abstinence == 1, 2:12] <- 0
+# Baseline smokers assigned sustained abstinence quit within the grace month,
+# so their month-1 average still includes some smoking.
+early_quit <- which(demo$cessation == 0 & demo$sustained_abstinence == 1)
+monthly[early_quit,1] <- round(pmax(1,
+ demo$cigarettes_per_day[early_quit] * runif(length(early_quit),0.1,1)),1)
+# Those not continuously abstinent must have at least one smoking month.
+need_smoking <- which(demo$sustained_abstinence == 0 &
+                        rowSums(monthly[,2:12]) == 0)
+monthly[need_smoking,12] <- demo$cigarettes_per_day[need_smoking]
+colnames(monthly) <- sprintf("cigs_m%02d",1:12)
+demo <- cbind(demo,as.data.frame(monthly))
+demo$later_tobacco_exposure <- round(rowMeans(monthly),1)
+stopifnot(all(demo$sustained_abstinence ==
+               as.integer(rowSums(monthly[,2:12]) == 0)))
+# Cancer occurs after year 1 through year 20.
+# A deliberately simplified teaching mechanism: sustained abstinence has a
+# protective pathway, while other cessation pathways and prior asbestos
+# exposure modify risk. Effects/values are not clinical evidence.
 demo$lung_cancer_complete <- rbinom(
-  n, 1,
-  plogis(-4.1 - 0.20 * demo$cessation +
-           0.095 * demo$later_tobacco_exposure +
-           0.035 * demo$pack_yr +
-           0.50 * demo$asbestos_exposure -
-           0.30 * demo$cessation * demo$asbestos_exposure +
-           0.018 * (demo$age - 45) +
-           0.55 * demo$unmeasured_health_risk)
+ n,1,plogis(-2.7 - 0.50 * demo$cessation -
+             0.70 * demo$sustained_abstinence +
+             0.040 * demo$pack_yr +
+             0.80 * demo$asbestos_exposure -
+             0.90 * demo$cessation * demo$asbestos_exposure +
+             0.025 * (demo$age - 47) +
+             0.40 * demo$unmeasured_health_risk -
+             0.000003 * (income_for_model - 30000))
 )
 
 demo$followup_status <- rbinom(
@@ -113,7 +132,7 @@ set.seed(8312)
 demo$hh_size <- sample(1:6, n, replace = TRUE,
                        prob = c(0.10, 0.20, 0.25, 0.25, 0.15, 0.05))
 demo$hh_income <- demo$income_pc * demo$hh_size
-# Students can verify income_pc = annual household income / household members.
+# Readers can verify income_pc = annual household income / household members.
 # Put the income variables together near the other baseline characteristics.
 base_names <- names(demo)[!names(demo) %in% c("income_pc", "hh_income", "hh_size")]
 pos <- match("sex", base_names)
