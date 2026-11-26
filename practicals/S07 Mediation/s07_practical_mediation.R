@@ -41,15 +41,16 @@ url <- paste0("https://raw.githubusercontent.com/profjamal/causality/main/",
 dat_ori <- read.csv(url)
 # If data already in the folder: dat_ori <- read.csv("data/smoking_cohort.csv")
 
-glimpse(dat_ori)
 head(dat_ori, 10)
 
 
 # 3b. Select and name the analysis variables
 # Use the complete cancer outcome to focus on mediation.
 dat <- dat_ori %>%
-  dplyr::select(stop_smoke = cessation, abstinent = sustained_abstinence,
-                lung_ca = lung_cancer_complete, asbestos = asbestos_exposure,
+  dplyr::select(stop_smoke = cessation, 
+                abstinent = sustained_abstinence,
+                lung_ca = lung_cancer_complete, 
+                asbestos = asbestos_exposure,
                 age, pack_yr, income_pc, clinic = clinic_id) %>%
   mutate(
     stop_smoke = factor(stop_smoke, levels = c(0, 1),
@@ -100,13 +101,7 @@ tab <- dat %>%
     include = c(age, pack_yr, income_pc, asbestos, abstinent, lung_ca),
     statistic = list(all_continuous() ~ "{mean} ({sd})",
                      income_pc ~ "{median} ({p25}, {p75})"),
-    type = list(c(asbestos, abstinent, lung_ca) ~ "categorical"),
-    label = list(age ~ "Age (years)", 
-                 pack_yr ~ "Baseline pack-years",
-                 income_pc ~ "Annual income (RM per person)",
-                 asbestos ~ "Previous asbestos exposure",
-                 abstinent ~ "Continuous abstinence (months 2–12)",
-                 lung_ca ~ "Later lung cancer")
+    type = list(c(asbestos, abstinent, lung_ca) ~ "categorical")
   ) %>%
   add_overall() %>%
   add_p(test = list(c(age, pack_yr) ~ "t.test",
@@ -205,6 +200,7 @@ tab_med
 # Methods: Define exposure, mediator window, outcome, adjustment and the two models.
 # Results: Indirect effect = __ pp (95% CI __ to __); direct = __ pp (__ to __);
 # total = __ pp (__ to __); proportion mediated = __% (__ to __), if interpretable.
+
 # Conclusion (answer the question): The findings are [consistent with mediation /
 # inconclusive about mediation] through sustained abstinence, under the assumptions.
 # The estimated risk difference through this pathway was __ pp; it accounted for

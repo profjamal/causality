@@ -101,10 +101,7 @@ dat$status <- factor(dat$obs, levels = c(1, 0),
 desc <- tbl_summary(
   dat, by = status, include = c(stop_smoke, age, sex, pack_yr, income_pc),
   statistic = list(all_continuous() ~ "{mean} ({sd})",
-                   income_pc ~ "{median} ({p25}, {p75})"),
-  label = list(stop_smoke ~ "Baseline smoking status", age ~ "Age (years)",
-               sex ~ "Sex", pack_yr ~ "Previous pack-years",
-               income_pc ~ "Income per capita (RM/person/year)")
+                   income_pc ~ "{median} ({p25}, {p75})")
 )
 desc
 miss <- dat %>%
@@ -195,9 +192,8 @@ summary(pooled, conf.int = TRUE, exponentiate = TRUE)
 
 # 5e. Inspect imputation behaviour and display the three estimates
 # Use mice's own diagnostic plot; no separate helper script is needed.
-plot(imp, layout = c(2, 1))
-# Capture that plot so ggsave() can save it without png()/dev.off().
-p2 <- grid::grid.grabExpr(print(plot(imp, layout = c(2, 1))), width = 7, height = 4)
+p2 <- plot(imp, layout = c(2, 1))
+p2
 # Look for chains mixing without persistent drift or separation.
 # These are diagnostic summaries of factor codes, not cancer-risk estimates.
 # A short trace and no logged events do not prove a valid imputation model or MAR.
@@ -267,7 +263,8 @@ ggsave("output/figures/s09_s10_missing.png", p1,
        width = 6, height = 4, dpi = 300)
 
 
-ggsave("output/figures/s09_s10_imputation_trace.png", p2,
+ggsave("output/figures/s09_s10_imputation_trace.png",
+       grid::grid.grabExpr(print(p2), width = 7, height = 4),
        width = 7, height = 4, dpi = 300, bg = "white")
 
 # 10. Summary

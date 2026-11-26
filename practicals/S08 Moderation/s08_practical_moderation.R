@@ -30,7 +30,6 @@ dir.create("output/figures")
 library(dplyr)
 library(labelled)
 library(dagitty)
-library(broom)
 library(gtsummary)
 
 
@@ -118,8 +117,7 @@ tab_group <- dat %>%
   tbl_summary(
     by = stop_smoke, include = lung_ca,
     type = lung_ca ~ "categorical",
-    statistic = all_categorical() ~ "{n} ({p}%)",
-    label = lung_ca ~ "Later lung cancer"
+    statistic = all_categorical() ~ "{n} ({p}%)"
   ) %>%
   add_p(test = lung_ca ~ "chisq.test.no.correct") %>%
   modify_caption("Lung cancer by baseline smoking group")
@@ -134,8 +132,7 @@ tab_cancer <- dat %>%
       tbl_summary(
         by = stop_smoke, include = lung_ca,
         type = lung_ca ~ "categorical",
-        statistic = all_categorical() ~ "{n} ({p}%)",
-        label = lung_ca ~ "Later lung cancer"
+        statistic = all_categorical() ~ "{n} ({p}%)"
       ) %>%
       add_p(test = lung_ca ~ "chisq.test.no.correct")
   ) %>%
@@ -154,11 +151,7 @@ tab_desc <- dat %>%
     include = c(age, sex, pack_yr, income_pc, stop_smoke, lung_ca),
     statistic = list(all_continuous() ~ "{mean} ({sd})",
                      income_pc ~ "{median} ({p25}, {p75})"),
-    type = list(c(stop_smoke, lung_ca) ~ "categorical"),
-    label = list(age ~ "Age (years)", sex ~ "Sex",
-                 pack_yr ~ "Baseline pack-years",
-                 income_pc ~ "Annual income (RM per person)",
-                 stop_smoke ~ "Baseline smoking status", lung_ca ~ "Later lung cancer")
+    type = lung_ca ~ "categorical"
   ) %>%
   add_overall() %>%
   modify_caption("Participant characteristics and follow-up outcomes by asbestos exposure")
@@ -214,12 +207,11 @@ or_yes <- broom::tidy(fit_yes, conf.int = TRUE, exponentiate = TRUE) %>%
 or_yes
 # Changing the reference changes the coefficient's meaning, not fitted probabilities.
 
-res <- bind_rows(or_no, or_yes, est %>% filter(term == "stop_smokeStopped smoking:asbestosYes")) %>%
+res <- bind_rows(or_no, or_yes, inter) %>%
   mutate(Measure = c("Adjusted cessation OR: asbestos No", "Adjusted cessation OR: asbestos Yes",
                      "Interaction: ratio of ORs (Yes / No)")) %>%
   dplyr::select(Measure, Estimate = estimate, Lower = conf.low,
                 Upper = conf.high, p.value)
-res
 
 # 7c. Display both group ORs and their interaction comparison
 tab_res <- res %>%

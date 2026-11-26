@@ -61,11 +61,11 @@ colSums(is.na(dat))
 var_label(dat) <- list(
   age = "Age (years)",
   sex = "Sex",
-  ex = "Exercise",
-  smk = "Smoking",
-  bmi = "BMI (kg/m2)",
-  bmi_status = "BMI status",
-  bp = "Blood pressure status",
+  ex = "Exercise level",
+  smk = "Smoking status",
+  bmi = "BMI (kg/m²)",
+  bmi_status = "BMI status (kg/m²)",
+  bp = "BP status",
   sbp = "Systolic BP (mmHg)",
   dbp = "Diastolic BP (mmHg)"
 )
@@ -100,13 +100,7 @@ tab <- dat %>%
   tbl_summary(
     include = c(age, sex, ex, smk, bmi, bmi_status, sbp, dbp, bp),
     statistic = list(all_continuous() ~ "{mean} ({sd})",
-                     all_categorical() ~ "{n} ({p}%)"),
-    type = list(c(sex, smk, bp) ~ "categorical"),
-    label = list(age ~ "Age (years)", sex ~ "Sex", ex ~ "Exercise level",
-                 smk ~ "Smoking status", bmi ~ "BMI (kg/m²)",
-                 bmi_status ~ "BMI status (kg/m²)",
-                 sbp ~ "Systolic BP (mmHg)", dbp ~ "Diastolic BP (mmHg)",
-                 bp ~ "BP status")
+                     all_categorical() ~ "{n} ({p}%)")
   )
 tab
 
@@ -143,10 +137,7 @@ tab_bp <- dat %>%
   tbl_summary(
     by = bp,
     include = c(age, sex, ex, smk, bmi_status),
-    statistic = all_continuous() ~ "{mean} ({sd})",
-    type = all_categorical() ~ "categorical",
-    label = list(age ~ "Age (years)", sex ~ "Sex", ex ~ "Exercise level",
-                 smk ~ "Smoking status", bmi_status ~ "BMI status (kg/m²)")
+    statistic = all_continuous() ~ "{mean} ({sd})"
   ) %>%
   add_p(test = list(age ~ "t.test", all_categorical() ~ "fisher.test"))
 tab_bp
@@ -154,7 +145,6 @@ tab_bp
 
 # Read group differences and p-values together, not p-values alone.
 # A non-significant result does not establish equal groups.
-# SBP and DBP define BP status, so testing them against that status is circular.
 
 # 8. Write the report
 # Methods: Describe participants, BP/BMI definitions, summaries and tests.

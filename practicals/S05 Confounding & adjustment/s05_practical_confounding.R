@@ -111,10 +111,7 @@ round(100 * prop.table(table(dat$stop_smoke, dat$lung_ca), margin = 1), 1)
 desc <- tbl_summary(
   dat, by = stop_smoke, include = c(age, sex, pack_yr, income_pc),
   statistic = list(all_continuous() ~ "{mean} ({sd})",
-                   income_pc ~ "{median} ({p25}, {p75})"),
-  label = list(age ~ "Age (years)", sex ~ "Sex",
-               pack_yr ~ "Previous pack-years",
-               income_pc ~ "Income per capita (RM/person/year)")
+                   income_pc ~ "{median} ({p25}, {p75})")
 )
 desc
 # Describe the differences. Do not select confounders using table p-values.
