@@ -16,6 +16,12 @@
 # Moderation concerns a stronger or weaker effect at different moderator levels.
 # State the scale: this practical compares odds ratios.
 
+# Interaction may be numerical x numerical, categorical x categorical,
+# or numerical x categorical. The interaction model has the same structure.
+# Numerical predictors: report slopes at meaningful values or in each group.
+# Categorical predictors: report comparisons within the other variable's groups.
+# Here: cessation x asbestos are categorical; lung cancer is the binary outcome.
+
 # 2. Setup: folders and packages
 # Folders: data/; output/tables/; output/figures/.
 getwd()
