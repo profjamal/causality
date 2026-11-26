@@ -130,7 +130,7 @@ plot(dag_int)
 # interaction represents stop_smoke × asbestos; the drawing does not prove it exists.
 
 # Analysis 3. Descriptive analysis and presentation table
-# 3a. Step 1: describe lung cancer in the comparison groups
+# 3a. Describe lung cancer in the comparison groups
 # Descriptive check 1: overall comparison.
 tab_group <- dat %>%
   tbl_summary(
@@ -176,7 +176,7 @@ tab_desc <- dat %>%
 tab_desc
 
 # Analysis 4. Analysis and interpretation
-# 4a. Step 2: fit the adjusted model with interaction
+# 4a. Fit the adjusted model with interaction
 # * includes cessation, asbestos and their interaction.
 # family = binomial() fits logistic regression for the binary cancer outcome.
 fit <- glm(lung_ca ~ stop_smoke * asbestos + age + sex + pack_yr + income_pc,
@@ -186,7 +186,7 @@ summary(fit)
 # The cessation coefficient applies to asbestos = No.
 # The asbestos coefficient applies to Continued smoking. Neither is an overall effect.
 
-# 4b. Step 3: present and assess the interaction term
+# 4b. Present and assess the interaction term
 # gtsummary reads the fitted model directly and displays ORs, CIs and p-values.
 tab_int <- tbl_regression(
   fit, exponentiate = TRUE,
