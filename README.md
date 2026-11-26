@@ -31,3 +31,16 @@ dat_ori <- read.csv(url)
 Keep the raw import as `dat_ori`. Select, rename and label the analysis variables, and set factor levels, in `dat`. Use `dat` for tables, plots and models. Define PICO-T (or PECO-T for an observed exposure) before analysis and answer that same question in the conclusion.
 
 The current smoking dataset is unchanged in this documentation update. The retired walking-mediation example is no longer part of the current teaching set; earlier versions remain in Git history.
+
+## Current student practicals
+
+Each script uses `dat_ori` for the unchanged import and `dat` for preparation, labels, factors and analysis. Questions follow PICO-T or PECO-T where relevant, and conclusions answer the opening question.
+
+- [S00 Revision](practicals/S00%20Revision/practical_revision.R)
+- [S05 Confounding & adjustment](practicals/S05%20Confounding%20%26%20adjustment/s05_practical_confounding.R)
+- [S06 Measurement Error](practicals/S06%20Measurement%20Error/s06_practical_measurement.R)
+- [S07 Mediation](practicals/S07%20Mediation/s07_practical_mediation.R)
+- [S08 Moderation](practicals/S08%20Moderation/s08_practical_moderation.R)
+- [S09-S10 Missing Data](practicals/S09-S10%20Missing%20Data/s09_s10_practical_missing.R)
+
+Run each script from its own working folder. It creates the data and output folders and imports the dataset from GitHub. The book manuscript, PDF and book downloads are maintained locally and are not published in this repository.
