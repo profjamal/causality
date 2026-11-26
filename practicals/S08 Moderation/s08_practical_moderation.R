@@ -31,8 +31,6 @@ library(dplyr)
 library(labelled)
 library(dagitty)
 library(gtsummary)
-
-
 library(flextable)
 library(ggdag)
 library(ggplot2)
@@ -65,14 +63,14 @@ var_label(dat) <- list(
   income_pc = "Annual income (RM per person)"
 )
 
+head(dat, 10)
+
 # 4. Statistical plan and causal structure
 # Four analysis steps:
 # 1. Describe cancer by smoking group, overall and within asbestos groups.
 # 2. Fit the adjusted outcome model with interaction.
 # 3. Present and assess the interaction term using gtsummary.
 # 4. Present the adjusted cessation OR in each asbestos group.
-# Exposure: baseline cessation. Outcome: cancer after year 1 through year 20.
-# Proposed moderator: asbestos exposure before baseline.
 # C = age, sex, baseline pack-years and annual income per person.
 
 # Structure A: ordinary causal DAG - identify adjustment with this diagram.
@@ -147,18 +145,17 @@ tab_cancer
 # Use the interaction model below to compare the effects between asbestos groups.
 
 
-# 5b. Display the descriptive table
+# 5b. Describe baseline characteristics
 # Mean (SD) for age and pack-years; median (Q1, Q3) for income; n (%) for categories.
 tab_desc <- dat %>%
   tbl_summary(
     by = asbestos,
-    include = c(age, sex, pack_yr, income_pc, stop_smoke, lung_ca),
+    include = c(age, sex, pack_yr, income_pc),
     statistic = list(all_continuous() ~ "{mean} ({sd})",
-                     income_pc ~ "{median} ({p25}, {p75})"),
-    type = lung_ca ~ "categorical"
+                     income_pc ~ "{median} ({p25}, {p75})")
   ) %>%
   add_overall() %>%
-  modify_caption("Participant characteristics and follow-up outcomes by asbestos exposure")
+  modify_caption("Baseline characteristics by previous asbestos exposure")
 tab_desc
 
 
@@ -169,7 +166,8 @@ fit <- glm(lung_ca ~ stop_smoke * asbestos + age + sex + pack_yr + income_pc,
            family = binomial(), data = dat)
 summary(fit)
 # summary() gives log-odds coefficients; exp(beta) gives odds ratios.
-# The stop_smoke coefficient applies to asbestos = No, not the whole cohort.
+# The cessation coefficient applies to asbestos = No.
+# The asbestos coefficient applies to Continued smoking. Neither is an overall effect.
 
 # 5d. Step 3: present and assess the interaction term
 # gtsummary reads the fitted model directly and displays ORs, CIs and p-values.
@@ -188,8 +186,10 @@ tab_int
 # the cessation OR in EACH asbestos group, plus their interaction comparison.
 # If p >= 0.05: no clear evidence of a difference. Examine the CI for uncertainty;
 # do not conclude the effects are equal or drop the interaction automatically.
-# Report planned group estimates in either case. A common-effect summary needs
-# scientific justification, not just a non-significant interaction p-value.
+# Report planned group estimates in either case. A model without interaction
+# assumes one cessation OR across asbestos groups; use it only if the question
+# and uncertainty justify that assumption, not just because p >= 0.05.
+# Here the interaction is supported, so keep the interaction model.
 
 # 7. Step 4: present the adjusted cessation OR in each asbestos group
 # 7a. Asbestos = No: use the original model's reference group.
@@ -209,7 +209,7 @@ tab_yes <- tbl_regression(
   label = list(stop_smoke ~ "Cessation OR: asbestos Yes")
 )
 # Changing the reference changes the coefficient's meaning, not fitted risks.
-# Both group ORs use all participants; these are not separate subgroup models.
+# Both group ORs use all participants and retain the main effects and interaction.
 
 # 7c. Put both group ORs and the interaction comparison in one table.
 tab_res <- tbl_stack(list(tab_no, tab_yes, tab_int)) %>%
