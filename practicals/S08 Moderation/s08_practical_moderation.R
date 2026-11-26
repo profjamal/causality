@@ -201,8 +201,7 @@ tab_int
 # 7a. Asbestos = No: use the original model's reference group.
 tab_no <- tbl_regression(
   fit, exponentiate = TRUE, include = stop_smoke,
-  show_single_row = stop_smoke,
-  label = list(stop_smoke ~ "Cessation OR: asbestos No")
+  show_single_row = stop_smoke
 )
 
 # 7b. Asbestos = Yes: change the reference and refit the SAME model.
@@ -211,18 +210,20 @@ dat_yes <- dat %>%
 fit_yes <- update(fit, data = dat_yes)
 tab_yes <- tbl_regression(
   fit_yes, exponentiate = TRUE, include = stop_smoke,
-  show_single_row = stop_smoke,
-  label = list(stop_smoke ~ "Cessation OR: asbestos Yes")
+  show_single_row = stop_smoke
 )
 # Changing the reference changes the coefficient's meaning, not fitted risks.
 # Both group ORs use all participants and retain the main effects and interaction.
 
-# 7c. Put both group ORs and the interaction comparison in one table.
-tab_res <- tbl_stack(list(tab_no, tab_yes, tab_int)) %>%
-  modify_header(label = "**Comparison**", estimate = "**Adjusted OR / ratio**") %>%
-  modify_caption("Adjusted cessation–lung cancer association by asbestos exposure") %>%
+# 7c. Compare the two group ORs side by side. The interaction table is separate.
+tab_res <- tbl_merge(
+  list(tab_no, tab_yes),
+  tab_spanner = c("**Asbestos: No**", "**Asbestos: Yes**")
+) %>%
+  modify_header(label = "**Comparison**") %>%
+  modify_caption("Adjusted ORs: stopped versus continued smoking, by asbestos exposure") %>%
   modify_source_note(
-    "Stopped versus continued smoking. Adjusted for age, sex, baseline pack-years and annual income per person. The final row is the ratio of group ORs (asbestos Yes / No)."
+    "Adjusted for age, sex, baseline pack-years and annual income per person. See the separate interaction table to compare the group ORs."
   )
 tab_res
 
@@ -264,8 +265,15 @@ save_as_docx(ft_desc, path = "output/tables/s08_descriptive.docx")
 
 ft <- as_flex_table(tab_res) %>%
   fontsize(size = 10, part = "all") %>%
-  set_table_properties(layout = "autofit", width = 1)
-save_as_docx(ft, path = "output/tables/s08_results.docx")
+  width(j = 1, width = 1.4) %>%
+  width(j = c(2, 5), width = 0.55) %>%
+  width(j = c(3, 6), width = 0.95) %>%
+  width(j = c(4, 7), width = 0.7) %>%
+  set_table_properties(layout = "fixed")
+ft_int <- as_flex_table(tab_int)
+save_as_docx("Adjusted group comparisons" = ft,
+             "Interaction comparison" = ft_int,
+             path = "output/tables/s08_results.docx")
 
 p_dag <- ggdag(dag, node = FALSE, text = FALSE) +
   geom_dag_label(aes(label = name), fill = "white", size = 4) +
