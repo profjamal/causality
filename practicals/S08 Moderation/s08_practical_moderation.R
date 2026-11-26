@@ -26,7 +26,7 @@ dir.create("output/figures")
 
 # Install once if needed:
 # install.packages(c("dplyr", "labelled", "dagitty", "ggdag", "ggplot2",
-#                    "broom", "gtsummary", "flextable"))
+#                    "gtsummary", "flextable"))
 library(dplyr)
 library(labelled)
 library(dagitty)
@@ -66,7 +66,11 @@ var_label(dat) <- list(
 )
 
 # 4. Statistical plan and causal structure
-# Fit the interaction model, assess its interaction term, then report each group OR.
+# Four analysis steps:
+# 1. Describe cancer by smoking group, overall and within asbestos groups.
+# 2. Fit the adjusted outcome model with interaction.
+# 3. Present and assess the interaction term using gtsummary.
+# 4. Present the adjusted cessation OR in each asbestos group.
 # Exposure: baseline cessation. Outcome: cancer after year 1 through year 20.
 # Proposed moderator: asbestos exposure before baseline.
 # C = age, sex, baseline pack-years and annual income per person.
@@ -111,7 +115,7 @@ plot(dag_int)
 # interaction represents stop_smoke × asbestos; the drawing does not prove it exists.
 
 # 5. Analysis and presentable tables
-# 5a. Compare lung cancer between smoking groups
+# 5a. Step 1: describe lung cancer in the comparison groups
 # Descriptive check 1: overall comparison.
 tab_group <- dat %>%
   tbl_summary(
@@ -158,7 +162,7 @@ tab_desc <- dat %>%
 tab_desc
 
 
-# 5c. Fit the outcome model with interaction
+# 5c. Step 2: fit the adjusted model with interaction
 # * includes cessation, asbestos and their interaction.
 # family = binomial() fits logistic regression for the binary cancer outcome.
 fit <- glm(lung_ca ~ stop_smoke * asbestos + age + sex + pack_yr + income_pc,
@@ -167,19 +171,17 @@ summary(fit)
 # summary() gives log-odds coefficients; exp(beta) gives odds ratios.
 # The stop_smoke coefficient applies to asbestos = No, not the whole cohort.
 
-# broom::tidy() converts model results into a table for selecting estimates.
-# conf.int adds 95% CIs; exponentiate converts estimates and CIs to ORs.
-est <- broom::tidy(fit, conf.int = TRUE, exponentiate = TRUE)
-est
-
-
-# 5d. Inspect the interaction estimate and CI
-inter <- est %>%
-  filter(term == "stop_smokeStopped smoking:asbestosYes") %>%
-  dplyr::select(estimate, conf.low, conf.high, p.value)
-inter
-# This estimate is the RATIO of cessation ORs: asbestos Yes / No. Null = 1.
-# Read its size, 95% CI and p-value together; it is not a group-specific cancer OR.
+# 5d. Step 3: present and assess the interaction term
+# gtsummary reads the fitted model directly and displays ORs, CIs and p-values.
+tab_int <- tbl_regression(
+  fit, exponentiate = TRUE,
+  include = "stop_smoke:asbestos",
+  show_single_row = "stop_smoke:asbestos",
+  label = list(`stop_smoke:asbestos` ~ "Interaction: ratio of ORs (Yes / No)")
+)
+tab_int
+# This is the RATIO of cessation ORs: asbestos Yes / No. Null = 1.
+# It tests whether the cessation OR differs between the two asbestos groups.
 
 # 6. Interpret the interaction result
 # If p < 0.05: evidence that the ORs differ. Retain the interaction and report
@@ -189,44 +191,34 @@ inter
 # Report planned group estimates in either case. A common-effect summary needs
 # scientific justification, not just a non-significant interaction p-value.
 
-# 7. Adjusted comparisons: estimate and interpret each group OR
-# Repeat the descriptive comparison using multivariable logistic regression.
-# Both group ORs come from the model containing stop_smoke * asbestos.
-# Relevelling below re-expresses the same model; it does not split the sample.
-# 7a. Asbestos = No: extract cessation from the original model.
-or_no <- est %>%
-  filter(term == "stop_smokeStopped smoking")
-or_no
+# 7. Step 4: present the adjusted cessation OR in each asbestos group
+# 7a. Asbestos = No: use the original model's reference group.
+tab_no <- tbl_regression(
+  fit, exponentiate = TRUE, include = stop_smoke,
+  show_single_row = stop_smoke,
+  label = list(stop_smoke ~ "Cessation OR: asbestos No")
+)
 
-# 7b. Asbestos = Yes: change the reference and refit the same interaction model.
+# 7b. Asbestos = Yes: change the reference and refit the SAME model.
 dat_yes <- dat %>%
   mutate(asbestos = relevel(asbestos, ref = "Yes"))
 fit_yes <- update(fit, data = dat_yes)
-or_yes <- broom::tidy(fit_yes, conf.int = TRUE, exponentiate = TRUE) %>%
-  filter(term == "stop_smokeStopped smoking")
-or_yes
-# Changing the reference changes the coefficient's meaning, not fitted probabilities.
+tab_yes <- tbl_regression(
+  fit_yes, exponentiate = TRUE, include = stop_smoke,
+  show_single_row = stop_smoke,
+  label = list(stop_smoke ~ "Cessation OR: asbestos Yes")
+)
+# Changing the reference changes the coefficient's meaning, not fitted risks.
+# Both group ORs use all participants; these are not separate subgroup models.
 
-res <- bind_rows(or_no, or_yes, inter) %>%
-  mutate(Measure = c("Adjusted cessation OR: asbestos No", "Adjusted cessation OR: asbestos Yes",
-                     "Interaction: ratio of ORs (Yes / No)")) %>%
-  dplyr::select(Measure, Estimate = estimate, Lower = conf.low,
-                Upper = conf.high, p.value)
-
-# 7c. Display both group ORs and their interaction comparison
-tab_res <- res %>%
-  as_gtsummary() %>%
-  modify_fmt_fun(c(Estimate, Lower, Upper) ~ label_style_number(digits = 2),
-                 p.value ~ label_style_pvalue(digits = 3)) %>%
-  modify_column_merge(pattern = "{Lower} to {Upper}") %>%
-  modify_header(Measure = "**Measure**", Estimate = "**Estimate**",
-                Lower = "**95% CI**", p.value = "**p-value**") %>%
+# 7c. Put both group ORs and the interaction comparison in one table.
+tab_res <- tbl_stack(list(tab_no, tab_yes, tab_int)) %>%
+  modify_header(label = "**Comparison**", estimate = "**Adjusted OR / ratio**") %>%
   modify_caption("Adjusted cessation–lung cancer association by asbestos exposure") %>%
   modify_source_note(
-    "Cessation versus continued smoking within each asbestos group. Adjusted for age, sex, baseline pack-years and annual income per person. Both group ORs come from the same interaction model. The final row compares the ORs (asbestos Yes / No). OR = odds ratio; CI = confidence interval."
+    "Stopped versus continued smoking. Adjusted for age, sex, baseline pack-years and annual income per person. The final row is the ratio of group ORs (asbestos Yes / No)."
   )
 tab_res
-
 
 # For each group, compare STOPPED with CONTINUED smoking:
 # OR < 1 indicates lower cancer odds; OR > 1 indicates higher odds.
@@ -288,5 +280,5 @@ ggsave("output/figures/s08_interaction_dag.png", p_int,
 
 # 10. Summary
 # End by answering the opening question, supported by the estimates and their CIs.
-# Use the causal DAG for adjustment, the interaction model to compare effects,
-# and group-specific ORs to explain the result. Do not compare subgroup p-values.
+# Describe the groups, fit the interaction model, assess interaction, then report
+# each group OR. Use the DAG for adjustment; do not compare subgroup p-values.
