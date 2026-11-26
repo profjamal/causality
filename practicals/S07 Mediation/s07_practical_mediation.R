@@ -24,8 +24,9 @@ dir.create("output/tables")
 dir.create("output/figures")
 
 # Install once if needed:
-# install.packages(c("dplyr", "dagitty", "ggdag", "ggplot2", "mediation", "gtsummary", "flextable"))
+# install.packages(c("dplyr", "labelled", "dagitty", "ggdag", "ggplot2", "mediation", "gtsummary", "flextable"))
 library(dplyr)
+library(labelled)
 library(dagitty)
 library(mediation)
 library(gtsummary)
@@ -57,13 +58,15 @@ dat <- dat_ori %>%
     asbestos = factor(asbestos, levels = c(0, 1), labels = c("No", "Yes")),
     abstinent = factor(abstinent, levels = c(0, 1), labels = c("No", "Yes"))
   )
-attr(dat$stop_smoke, "label") <- "Baseline smoking status"
-attr(dat$abstinent, "label") <- "Sustained abstinence (months 2–12)"
-attr(dat$lung_ca, "label") <- "Later lung cancer"
-attr(dat$asbestos, "label") <- "Previous asbestos exposure"
-attr(dat$age, "label") <- "Age (years)"
-attr(dat$pack_yr, "label") <- "Baseline pack-years"
-attr(dat$income_pc, "label") <- "Annual income (RM per person)"
+var_label(dat) <- list(
+  stop_smoke = "Baseline smoking status",
+  abstinent = "Sustained abstinence (months 2–12)",
+  lung_ca = "Later lung cancer",
+  asbestos = "Previous asbestos exposure",
+  age = "Age (years)",
+  pack_yr = "Baseline pack-years",
+  income_pc = "Annual income (RM per person)"
+)
 
 # 4. Statistical plan and causal structure
 # Fit TWO logistic models using the SAME participants:

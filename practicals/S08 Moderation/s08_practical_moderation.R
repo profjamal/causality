@@ -25,9 +25,10 @@ dir.create("output/tables")
 dir.create("output/figures")
 
 # Install once if needed:
-# install.packages(c("dplyr", "dagitty", "ggdag", "ggplot2",
+# install.packages(c("dplyr", "labelled", "dagitty", "ggdag", "ggplot2",
 #                    "broom", "gtsummary", "flextable"))
 library(dplyr)
+library(labelled)
 library(dagitty)
 library(broom)
 library(gtsummary)
@@ -55,13 +56,15 @@ dat <- dat_ori %>%
     sex = factor(sex, levels = c("female", "male"), labels = c("Female", "Male")),
     asbestos = factor(asbestos, levels = c(0, 1), labels = c("No", "Yes"))
   )
-attr(dat$stop_smoke, "label") <- "Baseline smoking status"
-attr(dat$lung_ca, "label") <- "Later lung cancer"
-attr(dat$asbestos, "label") <- "Previous asbestos exposure"
-attr(dat$age, "label") <- "Age (years)"
-attr(dat$sex, "label") <- "Sex"
-attr(dat$pack_yr, "label") <- "Baseline pack-years"
-attr(dat$income_pc, "label") <- "Annual income (RM per person)"
+var_label(dat) <- list(
+  stop_smoke = "Baseline smoking status",
+  lung_ca = "Later lung cancer",
+  asbestos = "Previous asbestos exposure",
+  age = "Age (years)",
+  sex = "Sex",
+  pack_yr = "Baseline pack-years",
+  income_pc = "Annual income (RM per person)"
+)
 
 # 4. Statistical plan and causal structure
 # Fit the interaction model, assess its interaction term, then report each group OR.

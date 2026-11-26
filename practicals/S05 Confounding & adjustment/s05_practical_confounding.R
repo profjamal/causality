@@ -25,9 +25,10 @@ dir.create("output")
 dir.create("output/tables")
 dir.create("output/figures")
 # Install once if needed:
-# install.packages(c("dplyr", "ggplot2", "dagitty", "ggdag", "gtsummary",
+# install.packages(c("dplyr", "labelled", "ggplot2", "dagitty", "ggdag", "gtsummary",
 #                    "survey", "flextable", "writexl"))
 library(dplyr)
+library(labelled)
 library(ggplot2)
 library(flextable)
 library(dagitty)
@@ -61,12 +62,14 @@ dat <- dat_ori %>%
     lung_ca = factor(lung_ca, levels = c(0, 1), labels = c("No", "Yes")),
     sex = factor(sex, levels = c("female", "male"), labels = c("Female", "Male"))
   )
-attr(dat$stop_smoke, "label") <- "Baseline smoking status"
-attr(dat$lung_ca, "label") <- "Later lung cancer"
-attr(dat$age, "label") <- "Age (years)"
-attr(dat$sex, "label") <- "Sex"
-attr(dat$pack_yr, "label") <- "Baseline pack-years"
-attr(dat$income_pc, "label") <- "Annual income (RM per person)"
+var_label(dat) <- list(
+  stop_smoke = "Baseline smoking status",
+  lung_ca = "Later lung cancer",
+  age = "Age (years)",
+  sex = "Sex",
+  pack_yr = "Baseline pack-years",
+  income_pc = "Annual income (RM per person)"
+)
 
 # pack_yr = cumulative smoking before baseline, in pack-years.
 # income_pc = annual household income / household members, RM/person/year.

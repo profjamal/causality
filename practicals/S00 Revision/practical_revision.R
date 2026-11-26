@@ -24,8 +24,9 @@ dir.create("output/tables")
 dir.create("output/figures")
 
 # Install once if needed:
-# install.packages(c("dplyr", "ggplot2", "gtsummary", "flextable", "writexl"))
+# install.packages(c("dplyr", "labelled", "ggplot2", "gtsummary", "flextable", "writexl"))
 library(dplyr)
+library(labelled)
 library(ggplot2)
 library(gtsummary)
 library(flextable)
@@ -57,15 +58,17 @@ dat <- dat_ori %>%
   )
 glimpse(dat)
 colSums(is.na(dat))
-attr(dat$age, "label") <- "Age (years)"
-attr(dat$sex, "label") <- "Sex"
-attr(dat$ex, "label") <- "Exercise"
-attr(dat$smk, "label") <- "Smoking"
-attr(dat$bmi, "label") <- "BMI (kg/m2)"
-attr(dat$bmi_status, "label") <- "BMI status"
-attr(dat$bp, "label") <- "Blood pressure status"
-attr(dat$sbp, "label") <- "Systolic BP (mmHg)"
-attr(dat$dbp, "label") <- "Diastolic BP (mmHg)"
+var_label(dat) <- list(
+  age = "Age (years)",
+  sex = "Sex",
+  ex = "Exercise",
+  smk = "Smoking",
+  bmi = "BMI (kg/m2)",
+  bmi_status = "BMI status",
+  bp = "Blood pressure status",
+  sbp = "Systolic BP (mmHg)",
+  dbp = "Diastolic BP (mmHg)"
+)
 
 # BP status is a screening category.
 

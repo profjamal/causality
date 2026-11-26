@@ -25,9 +25,10 @@ dir.create("output")
 dir.create("output/tables")
 dir.create("output/figures")
 # Install once if needed:
-# install.packages(c("dplyr", "ggplot2", "gtsummary", "flextable", "mice",
+# install.packages(c("dplyr", "labelled", "ggplot2", "gtsummary", "flextable", "mice",
 #                    "writexl", "survey"))
 library(dplyr)
+library(labelled)
 library(ggplot2)
 library(gtsummary)
 library(flextable)
@@ -56,13 +57,15 @@ dat <- dat_ori %>%
     asbestos = factor(asbestos, levels = c(0, 1), labels = c("No", "Yes")),
     clinic = factor(clinic)
   )
-attr(dat$stop_smoke, "label") <- "Baseline smoking status"
-attr(dat$lung_ca, "label") <- "Later lung cancer"
-attr(dat$age, "label") <- "Age (years)"
-attr(dat$sex, "label") <- "Sex"
-attr(dat$pack_yr, "label") <- "Baseline pack-years"
-attr(dat$income_pc, "label") <- "Annual income (RM per person)"
-attr(dat$asbestos, "label") <- "Previous asbestos exposure"
+var_label(dat) <- list(
+  stop_smoke = "Baseline smoking status",
+  lung_ca = "Later lung cancer",
+  age = "Age (years)",
+  sex = "Sex",
+  pack_yr = "Baseline pack-years",
+  income_pc = "Annual income (RM per person)",
+  asbestos = "Previous asbestos exposure"
+)
 
 # Do not select lung_cancer_complete or unmeasured_health_risk.
 # Researchers would not have these hidden values in an actual study.
