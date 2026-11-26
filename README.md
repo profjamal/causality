@@ -2,33 +2,32 @@
 
 Teaching resources by Jamalludin Ab Rahman, Kulliyyah of Medicine, IIUM.
 
-## Revised synthetic cohort 29 October 2026
+## Current synthetic smoking cohort
 
-3,000 fictional baseline smokers in 30 clinics, 32 columns. No real participants.
+3,000 fictional participants aged 30–65 with a smoking history in 30 clinics; 33 columns. No real participants.
 
+- `cessation`: seven-day abstinence at baseline (1), compared with smoking at baseline (0). Later relapse or quitting is possible.
+- `sustained_abstinence`: zero reported smoking in every month 2–12 (1), otherwise 0. Month 1 is a grace period. This is the binary mediator in the current smoking example.
+- `later_tobacco_exposure`: mean cigarettes/day across months 1–12, retained as a descriptive variable.
 - `pack_yr`: cumulative smoking before baseline, in pack-years.
-- `income_pc`: annual household income per member, RM/person/year.
-- `hh_income`: gross household income from all sources over the preceding 12 months, RM/year.
-- `hh_size`: usual household members at baseline, including children, integer 1-6.
+- `income_pc`: annual household income divided by household members, RM/person/year. These are simulated teaching values, not Malaysian population income norms.
+- `asbestos_exposure`: occupational exposure before baseline.
+- Cancer is generated after year 1 through year 20.
 
-`income_pc = hh_income / hh_size`. For example, RM120,000/year divided by four members is RM30,000/person/year. All values are generated for teaching, not measured in a real survey and not Malaysian income norms. The old unitless socioeconomic score is not exported. `pack_yr` replaces the former `previous_pack_years` column; update old scripts to the current names.
-
-The generator uses an illustrative log-income distribution centred on RM30,000/person/year and a separate household-size seed. The smoking histories, cessation classification and cancer outcomes from the October 28 revision are preserved, but adjusted model estimates must be recalculated with the new income variable.
-
-Cessation means seven-day abstinence at baseline; later relapse or quitting is possible. `later_tobacco_exposure` is average cigarettes/day across months 1-12. Cancer is generated after that first-year window through year 20.
-
-Use `lung_cancer_complete` for complete-data teaching examples. Use `lung_cancer`, retaining its NAs, for selection and missing-data lessons. Models include deliberately omitted causes and do not identify causal effects automatically.
+Use `lung_cancer_complete` for complete-data teaching examples. Use `lung_cancer`, retaining its NAs, for selection and missing-data examples. Do not use the complete simulated truth to fill missing outcomes in an analysis representing a real study. Models contain deliberately omitted causes; fitted effects require causal assumptions.
 
 ## Files
 
-- `data/smoking_cohort_demo.csv`: current 3,000-row, 32-column dataset.
-- `scripts/generate_demo_data.R`: reproducible generator, seeds 8311 and 8312.
-- `codebook/smoking_cohort_codebook.md`: definitions, units and teaching roles.
+- [Current dataset](data/smoking_cohort_demo.csv)
+- [Codebook](codebook/smoking_cohort_codebook.md)
+- [Reproducible generator](scripts/generate_demo_data.R)
+- [Mediator definition](data/smoking_mediation_definition.txt)
 
 ```r
 url <- "https://raw.githubusercontent.com/profjamal/causality/main/data/smoking_cohort_demo.csv"
-dat <- read.csv(url)
-stopifnot(all(dat$income_pc == dat$hh_income / dat$hh_size))
+dat_ori <- read.csv(url)
 ```
 
-The book and practical packages include the same CSV for offline use.
+Keep the raw import as `dat_ori`. Select, rename and label the analysis variables, and set factor levels, in `dat`. Use `dat` for tables, plots and models. Define PICO-T (or PECO-T for an observed exposure) before analysis and answer that same question in the conclusion.
+
+The current smoking dataset is unchanged in this documentation update. The retired walking-mediation example is no longer part of the current teaching set; earlier versions remain in Git history.
