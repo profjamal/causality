@@ -1,29 +1,17 @@
 # STAT 8311 | Session 5: Confounding and Adjustment
 
-# 1. Introduction and principle
-# Causal question: Among people aged 30–65 with a smoking history in the teaching clinic
-# cohort, would baseline cessation, compared with continued smoking, reduce lung cancer
-# after year 1 through year 20?
-# Analysis question: What does adjustment for baseline common causes change
-# about the estimated cessation–cancer association?
-# PICO-T (I/E is the exposure; no cessation programme is assigned).
-# P: People aged 30–65 with a smoking history in the teaching clinic cohort.
-# I/E: Baseline cessation (seven-day abstinence at the baseline visit).
-# C: Continued smoking at baseline.
-# O: Lung cancer.
-# T: Cancer after year 1 through year 20.
-#
-# Compare cessation with continued smoking for later lung cancer.
-# Confounders are common causes; choose adjustment from causal reasoning.
-# A change in an OR after adjustment does not by itself prove confounding.
+# SETUP
 
-# 2. Setup: folders and packages
-# Folders: data/; output/tables/; output/figures/.
+# Setup 1. Set the working directory and create folders
+# Edit and run this line for your own practical folder:
+# setwd("~/STAT8311/S05 Confounding & adjustment")
 getwd()
 dir.create("data")
 dir.create("output")
 dir.create("output/tables")
 dir.create("output/figures")
+
+# Setup 2. Install and load packages
 # Install once if needed:
 # install.packages(c("dplyr", "labelled", "ggplot2", "dagitty", "ggdag", "gtsummary",
 #                    "survey", "flextable", "writexl"))
@@ -36,8 +24,7 @@ library(ggdag)
 library(gtsummary)
 library(survey)
 
-# 3. Prepare the data
-# 3a. Import the cohort; then select variables and set their coding.
+# Setup 3. Import the raw data: dat_ori
 url <- paste0(
   "https://raw.githubusercontent.com/profjamal/causality/main/",
   "data/smoking_cohort_demo.csv"
@@ -46,7 +33,7 @@ dat_ori <- read.csv(url)
 # Offline: dat_ori <- read.csv("data/smoking_cohort.csv")
 head(dat_ori, 10)
 
-# 3b. Select and label the analysis variables
+# Setup 4. Select and rename variables: dat
 # stop_smoke: seven-day abstinence at baseline (1) vs smoking (0).
 # Later relapse or quitting can occur.
 # lung_ca: cancer after year 1 through year 20 (0 = no, 1 = yes).
@@ -55,7 +42,10 @@ head(dat_ori, 10)
 # Missing outcomes and complete-case selection are covered separately.
 dat <- dat_ori %>%
   dplyr::select(stop_smoke = cessation, lung_ca = lung_cancer_complete,
-                age, sex, pack_yr, income_pc, clinic = clinic_id) %>%
+                age, sex, pack_yr, income_pc, clinic = clinic_id)
+
+# Setup 5. Set variable labels, values and factor levels: dat
+dat <- dat %>%
   mutate(
     stop_smoke = factor(stop_smoke, levels = c(0, 1),
                         labels = c("Continued smoking", "Stopped smoking")),
@@ -73,10 +63,31 @@ var_label(dat) <- list(
 
 # pack_yr = cumulative smoking before baseline, in pack-years.
 # income_pc = annual household income / household members, RM/person/year.
-nrow(dat)
-colSums(is.na(dat))
 
-# 4. Statistical plan and causal structure
+
+head(dat, 10)
+
+
+# ANALYSIS
+
+# Analysis 1. Question and PICO-T
+# Causal question: Among people aged 30–65 with a smoking history in the teaching clinic
+# cohort, would baseline cessation, compared with continued smoking, reduce lung cancer
+# after year 1 through year 20?
+# Analysis question: What does adjustment for baseline common causes change
+# about the estimated cessation–cancer association?
+# PICO-T (I/E is the exposure; no cessation programme is assigned).
+# P: People aged 30–65 with a smoking history in the teaching clinic cohort.
+# I/E: Baseline cessation (seven-day abstinence at the baseline visit).
+# C: Continued smoking at baseline.
+# O: Lung cancer.
+# T: Cancer after year 1 through year 20.
+#
+# Compare cessation with continued smoking for later lung cancer.
+# Confounders are common causes; choose adjustment from causal reasoning.
+# A change in an OR after adjustment does not by itself prove confounding.
+
+# Analysis 2. DAG and adjustment plan
 # Describe both groups, then compare crude and adjusted models on the same people.
 # Identify the adjustment set
 # How is baseline cessation associated with later lung-cancer risk?
@@ -99,14 +110,14 @@ adjustmentSets(dag)
 # Selecting or adjusting for S may create bias; do not control every variable.
 # This is a simplified working DAG, not proof that all confounders are measured.
 
-# 5. Analysis and presentable tables
-# 5a. Descriptive check 1: count cancer outcomes in each smoking group.
+# Analysis 3. Descriptive analysis and presentation table
+# 3a. Descriptive check 1: count cancer outcomes in each smoking group.
 table(dat$stop_smoke, dat$lung_ca)
 # Counts alone do not compare risk when group sizes differ.
 round(100 * prop.table(table(dat$stop_smoke, dat$lung_ca), margin = 1), 1)
 # Row percentages: read the Yes (cancer) column within each smoking group.
 
-# 5b. Descriptive check 2: compare baseline factors between the smoking groups.
+# 3b. Descriptive check 2: compare baseline factors between the smoking groups.
 # Income is right-skewed, so use median (Q1, Q3).
 desc <- tbl_summary(
   dat, by = stop_smoke, include = c(age, sex, pack_yr, income_pc),
@@ -117,7 +128,7 @@ desc
 # Describe the differences. Do not select confounders using table p-values.
 # A common cause may need adjustment even when its group difference is small.
 
-# 5c. Descriptive check 3: view previous smoking history in both groups.
+# 3c. Descriptive check 3: view previous smoking history in both groups.
 p1 <- ggplot(dat, aes(x = stop_smoke, y = pack_yr)) +
   geom_boxplot(fill = "lightblue") +
   labs(x = "Baseline smoking status", y = "Previous pack-years") +
@@ -125,7 +136,8 @@ p1 <- ggplot(dat, aes(x = stop_smoke, y = pack_yr)) +
 p1
 # Overlapping boxes do not establish comparability on all confounders.
 
-# 5d. Fit TWO outcome models on the same participants
+# Analysis 4. Analysis and interpretation
+# 4a. Fit TWO outcome models on the same participants
 # Identify clinics once; use the same participants in both models.
 des <- svydesign(ids = ~clinic, weights = ~1, data = dat)
 # Model 1: estimate the crude association.
@@ -139,7 +151,7 @@ summary(fit1)
 # The adjustment variables follow the working DAG, not stepwise selection.
 # Keep adjustment focused on the justified baseline variables.
 
-# 5e. Present crude and adjusted ORs using gtsummary
+# 4b. Present crude and adjusted ORs using gtsummary
 # svyglm accounts for participants sharing clinics.
 # gtsummary reads the ORs and clinic-adjusted CIs directly from each model.
 t0 <- tbl_regression(fit0, exponentiate = TRUE, include = stop_smoke, show_single_row = stop_smoke,
@@ -164,23 +176,23 @@ tab
 # confounding. Do not use a percentage-change rule as proof of confounding.
 # Both summary(fit1) and the table use clinic-adjusted uncertainty.
 
-# 6. Interpret the results
 # Compare the crude and adjusted OR, their CIs and the covariates included.
 # CI excludes 1: evidence of an association under the fitted model.
 # CI includes 1: the direction and size remain uncertain; not proof of no effect.
 # Keep an association's size separate from its statistical significance.
 
-# 7. Subsequent analysis decisions
 # Retain justified confounders even when their own p-values are large.
 # Check whether both smoking groups cover comparable baseline covariate values.
 # Do not remove variables solely to obtain a desired p-value.
 
-# 8. Write the report
+# Analysis 5. Suggested methods and results
 # Methods: We selected baseline age, sex, previous pack-years and annual income per capita using
 # a working causal DAG. We fitted crude and adjusted logistic models to the
 # same complete synthetic cohort, with CIs allowing for clinic clustering.
 # Results: Crude OR = __ (95% CI __ to __).
 # Adjusted OR = __ (95% CI __ to __).
+
+# Analysis 6. Conclusion: answer the question
 # Conclusion (answer the question): After baseline adjustment, cessation was
 # associated with __ cancer odds compared with continued smoking.
 # This is [consistent with a protective effect / inconclusive about benefit],
@@ -190,7 +202,7 @@ tab
 # The synthetic data include omitted causes: this is a teaching adjustment set.
 # Clinic-clustered CIs address dependence, not confounding bias.
 
-# 9. Save the figures and tables
+# Analysis 7. Save tables and figures
 # gtsummary already supplies the table labels, estimates and CIs.
 # as_flex_table() converts the table; save_as_docx() saves it to Word.
 ft1 <- as_flex_table(desc)
@@ -217,7 +229,4 @@ ggsave("output/figures/s05_dag.png",
          scale_y_continuous(expand = expansion(mult = 0.15)),
        width = 7, height = 5, dpi = 300)
 
-# 10. Summary
-# End by answering the opening question, supported by the estimates and their CIs.
-# Justify adjustment before modelling; compare estimates using the same sample.
-# Report the adjusted association with uncertainty and remaining limitations.
+# End of practical
