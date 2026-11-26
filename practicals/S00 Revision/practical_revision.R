@@ -1,6 +1,76 @@
 # STAT 8311 | S00: Revision of R for Statistical Analysis
 
-# 1. Introduction and principle
+# SETUP
+
+# Setup 1. Set the working directory and create folders
+# Edit and run this line for your own practical folder:
+# setwd("~/STAT8311/S00 Revision")
+getwd()
+dir.create("data")
+dir.create("output")
+dir.create("output/tables")
+dir.create("output/figures")
+
+# Setup 2. Install and load packages
+# Install once if needed:
+# install.packages(c("dplyr", "labelled", "ggplot2", "gtsummary", "flextable", "writexl", "dagitty", "ggdag"))
+library(dplyr)
+library(labelled)
+library(ggplot2)
+library(gtsummary)
+library(flextable)
+library(writexl)
+library(dagitty)
+library(ggdag)
+
+# Setup 3. Import the raw data: dat_ori
+url <- "https://raw.githubusercontent.com/profjamal/biostatistics/main/healthstatus.csv"
+dat_ori <- read.csv(url)
+# Offline: replace the line above with dat_ori <- read.csv("data/healthstatus.csv")
+glimpse(dat_ori)
+
+# Setup 4. Select and rename variables: dat
+dat <- dat_ori %>%
+  select(id, age, sex, ex = exercise, smk = smoking,
+         weight_kg = wt, height_cm = ht, sbp, dbp)
+
+# Setup 5. Set variable labels, values and factor levels: dat
+dat <- dat %>%
+  mutate(
+    sex = factor(sex, levels = c("Male", "Female")),
+    ex = factor(ex, levels = c("Low", "Moderate", "High")),
+    smk = factor(smk, levels = c("No", "Yes"),
+                 labels = c("Non-smoker", "Smoker")),
+    bmi = weight_kg / (height_cm / 100)^2,
+    bmi_status = ifelse(bmi < 25, "<25",
+                        ifelse(bmi < 30, "25 to <30", "30 or above")),
+    bmi_status = factor(bmi_status, levels = c("<25", "25 to <30", "30 or above")),
+    bp = factor(if_else(sbp >= 140 | dbp >= 90, "High", "Not high"),
+                levels = c("Not high", "High"))
+  )
+var_label(dat) <- list(
+  id = "Participant ID",
+  weight_kg = "Weight (kg)",
+  height_cm = "Height (cm)",
+  age = "Age (years)",
+  sex = "Sex",
+  ex = "Exercise level",
+  smk = "Smoking status",
+  bmi = "BMI (kg/m²)",
+  bmi_status = "BMI status (kg/m²)",
+  bp = "BP status",
+  sbp = "Systolic BP (mmHg)",
+  dbp = "Diastolic BP (mmHg)"
+)
+
+# BP status is a screening category.
+
+head(dat, 10)
+
+
+# ANALYSIS
+
+# Analysis 1. Question and PICO-T
 # Question: Which characteristics are associated with high BP in this sample?
 # Compare age, sex, exercise, smoking and BMI status by BP status.
 # This revision examines associations; it does not estimate causal effects.
@@ -15,70 +85,29 @@
 # Use mean (SD) for roughly symmetric continuous data and n (%) for categories.
 # Bivariable results describe unadjusted associations, not causal effects.
 
-# 2. Setup: folders and packages
-# Folders: data/; output/tables/; output/figures/.
-getwd()
-dir.create("data")
-dir.create("output")
-dir.create("output/tables")
-dir.create("output/figures")
+# Analysis 2. DAG and adjustment plan
+# Illustrative structure for an exercise-BP causal question in a future study.
+# C represents age and sex, possible common causes of exercise and BP.
+# This cross-sectional revision reports unadjusted associations, not causal effects.
+dag <- dagitty('dag {
+  ex [exposure, pos="0,0"]
+  bp [outcome, pos="4,0"]
+  C [pos="2,2"]
+  C -> ex
+  C -> bp
+  ex -> bp
+}')
+plot(dag)
+adjustmentSets(dag)
+# The suggested set is C under this simplified structure.
+# We do not fit an adjusted causal model in this revision.
 
-# Install once if needed:
-# install.packages(c("dplyr", "labelled", "ggplot2", "gtsummary", "flextable", "writexl"))
-library(dplyr)
-library(labelled)
-library(ggplot2)
-library(gtsummary)
-library(flextable)
-library(writexl)
-
-# 3. Prepare the data
-# 3a. Download the Health Status data
-url <- "https://raw.githubusercontent.com/profjamal/biostatistics/main/healthstatus.csv"
-dat_ori <- read.csv(url)
-# Offline: replace the line above with dat_ori <- read.csv("data/healthstatus.csv")
-glimpse(dat_ori)
-
-
-# 3b. Select, rename and label the variables
-dat <- dat_ori %>%
-  select(id, age, sex, ex = exercise, smk = smoking,
-         weight_kg = wt, height_cm = ht, sbp, dbp) %>%
-  mutate(
-    sex = factor(sex, levels = c("Male", "Female")),
-    ex = factor(ex, levels = c("Low", "Moderate", "High")),
-    smk = factor(smk, levels = c("No", "Yes"),
-                 labels = c("Non-smoker", "Smoker")),
-    bmi = weight_kg / (height_cm / 100)^2,
-    bmi_status = ifelse(bmi < 25, "<25",
-                        ifelse(bmi < 30, "25 to <30", "30 or above")),
-    bmi_status = factor(bmi_status, levels = c("<25", "25 to <30", "30 or above")),
-    bp = factor(if_else(sbp >= 140 | dbp >= 90, "High", "Not high"),
-                levels = c("Not high", "High"))
-  )
-glimpse(dat)
-colSums(is.na(dat))
-var_label(dat) <- list(
-  age = "Age (years)",
-  sex = "Sex",
-  ex = "Exercise level",
-  smk = "Smoking status",
-  bmi = "BMI (kg/m²)",
-  bmi_status = "BMI status (kg/m²)",
-  bp = "BP status",
-  sbp = "Systolic BP (mmHg)",
-  dbp = "Diastolic BP (mmHg)"
-)
-
-# BP status is a screening category.
-
-# 4. Statistical plan
+# Analysis 3. Descriptive analysis and presentation table
 # Check distributions, describe the sample and make simple plots.
 # Then compare age and categorical characteristics by BP status.
 # Use a t-test for age and Fisher's exact test for categorical variables.
 
-# 5. Analysis and presentable tables
-# 5a. Check the shape of age before choosing a summary
+# 3a. Check the shape of age before choosing a summary
 # The line is a normal curve with the same mean and SD as the observed ages.
 p_age <- ggplot(dat, aes(age)) +
   geom_histogram(aes(y = after_stat(density)), binwidth = 5,
@@ -93,7 +122,7 @@ p_age
 # for clearly skewed data, use median (Q1, Q3).
 
 
-# 5b. Describe the sample using gtsummary
+# 3b. Describe the sample using gtsummary
 # For the supplied data, use mean (SD) for age, BMI and BP readings.
 # Categorical variables use counts and percentages: n (%).
 tab <- dat %>%
@@ -104,8 +133,8 @@ tab <- dat %>%
   )
 tab
 
-
-# 5c. Make simple plots with ggplot2
+# Analysis 4. Analysis and interpretation
+# 4a. Make simple plots with ggplot2
 p_ex <- ggplot(dat, aes(ex)) +
   geom_bar(fill = "steelblue") +
   labs(x = "Exercise level", y = "Count") +
@@ -124,12 +153,10 @@ p_age_sbp <- ggplot(dat, aes(age, sbp)) +
   theme_minimal()
 p_age_sbp
 
-# 6. Interpret the descriptive results
 # Read the units, denominator and missing counts before comparing summaries.
 # The normal curve is a guide; a single plot does not prove normality.
 # Compare patterns in the plots with the numerical summaries.
 
-# 7. Subsequent analysis: bivariable comparisons by BP status
 # Objective: examine how age, sex, exercise, smoking and BMI status
 # are each associated with high BP status.
 # SBP and DBP define BP status, so leave them out of this comparison.
@@ -146,14 +173,16 @@ tab_bp
 # Read group differences and p-values together, not p-values alone.
 # A non-significant result does not establish equal groups.
 
-# 8. Write the report
+# Analysis 5. Suggested methods and results
 # Methods: Describe participants, BP/BMI definitions, summaries and tests.
 # Results: N = __; high BP = __ (__%). Describe the main group differences.
+
+# Analysis 6. Conclusion: answer the question
 # Conclusion (answer the question): High BP was associated with __ in this sample.
 # For __, the comparison was uncertain. These unadjusted, cross-sectional
 # comparisons do not establish which characteristics cause high BP.
 
-# 9. Save the figures and tables
+# Analysis 7. Save tables and figures
 # Convert the tables for Word. The path gives the folder and filename.
 ft1 <- as_flex_table(tab)
 save_as_docx("Participant characteristics" = ft1,
@@ -178,7 +207,11 @@ ggsave("output/figures/age_sbp.png", p_age_sbp, width = 6, height = 4, dpi = 300
 write.csv(dat, "data/health_clean.csv", row.names = FALSE)
 # In RStudio's Files pane, open output > tables or output > figures.
 
-# 10. Summary
-# End by answering the opening question using the descriptive and bivariable results.
-# Prepare and label variables, describe distributions, then compare BP groups.
-# Present tables before saving; distinguish description from causal inference.
+p_dag <- ggdag(dag, node = FALSE, text = FALSE) +
+  geom_dag_label(aes(label = name), fill = "white", size = 4) +
+  theme_dag() +
+  scale_x_continuous(expand = expansion(mult = 0.25)) +
+  scale_y_continuous(expand = expansion(mult = 0.15))
+ggsave("output/figures/revision_dag.png", p_dag, width = 7, height = 5, dpi = 300)
+
+# End of practical
