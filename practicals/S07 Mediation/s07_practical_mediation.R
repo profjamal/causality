@@ -148,7 +148,7 @@ med <- mediate(fit_m, fit_y, treat = "stop_smoke", mediator = "abstinent",
 summary(med)
 # Read ACME (average), ADE (average) and Total Effect in the output.
 
-# 5d check (optional): total-association model, mediator omitted (path c)
+# Check the total-association model without the mediator (path c)
 fit_c <- glm(lung_ca ~ stop_smoke + age + pack_yr + income_pc + asbestos,
              family = binomial(), data = dat)
 summary(fit_c)
