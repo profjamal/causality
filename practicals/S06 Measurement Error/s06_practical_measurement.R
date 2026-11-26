@@ -1,28 +1,17 @@
 # STAT 8311 | Session 6: Measurement Error and Information Bias
 
-# 1. Introduction and principle
-# Causal question: Among people aged 30–65 with a smoking history in the teaching clinic
-# cohort, would baseline cessation, compared with continued smoking, reduce lung cancer
-# after year 1 through year 20?
-# Analysis question: How does inaccurate recording of cessation change
-# our estimate of that relationship?
-# PICO-T (I/E is the exposure; no cessation programme is assigned).
-# P: People aged 30–65 with a smoking history in the teaching clinic cohort.
-# I/E: Baseline cessation (seven-day abstinence at the baseline visit).
-# C: Continued smoking at baseline.
-# O: Lung cancer.
-# T: Cancer after year 1 through year 20.
-#
-# Examine how inaccurate cessation recording changes the estimated association.
-# Sensitivity and specificity describe accuracy; narrow CIs do not remove bias.
+# SETUP
 
-# 2. Setup: folders and packages
-# Folders: data/; output/tables/; output/figures/.
+# Setup 1. Set the working directory and create folders
+# Edit and run this line for your own practical folder:
+# setwd("~/STAT8311/S06 Measurement Error")
 getwd()
 dir.create("data")
 dir.create("output")
 dir.create("output/tables")
 dir.create("output/figures")
+
+# Setup 2. Install and load packages
 # Install once if needed:
 # install.packages(c("dplyr", "labelled", "ggplot2", "dagitty", "ggdag", "gtsummary",
 #                    "survey", "flextable", "writexl"))
@@ -35,8 +24,7 @@ library(ggdag)
 library(gtsummary)
 library(survey)
 
-# 3. Prepare the data
-# 3a. Import the cohort; then select variables and set their coding.
+# Setup 3. Import the raw data: dat_ori
 url <- paste0(
   "https://raw.githubusercontent.com/profjamal/causality/main/",
   "data/smoking_cohort_demo.csv"
@@ -44,13 +32,18 @@ url <- paste0(
 dat_ori <- read.csv(url)
 # Offline: dat_ori <- read.csv("data/smoking_cohort.csv")
 head(dat_ori, 10)
+
+# Setup 4. Select and rename variables: dat
 # stop_smoke: seven-day abstinence at baseline (1) vs smoking (0).
 # Later relapse or quitting is possible.
 # lung_ca: cancer after year 1 through year 20 (0 = no, 1 = yes).
 # Use complete synthetic cancer outcomes, as in Session 5.
 dat <- dat_ori %>%
   dplyr::select(stop_smoke = cessation, lung_ca = lung_cancer_complete,
-                age, sex, pack_yr, income_pc, clinic = clinic_id) %>%
+                age, sex, pack_yr, income_pc, clinic = clinic_id)
+
+# Setup 5. Set variable labels, values and factor levels: dat
+dat <- dat %>%
   mutate(
     stop_smoke = factor(stop_smoke, levels = c(0, 1),
                         labels = c("Continued smoking", "Stopped smoking")),
@@ -68,10 +61,30 @@ var_label(dat) <- list(
 
 # pack_yr = cumulative smoking before baseline, in pack-years.
 # income_pc = annual household income / household members, RM/person/year.
-nrow(dat)
-colSums(is.na(dat))
 
-# 4. Statistical plan and measurement structure
+
+head(dat, 10)
+
+
+# ANALYSIS
+
+# Analysis 1. Question and PICO-T
+# Causal question: Among people aged 30–65 with a smoking history in the teaching clinic
+# cohort, would baseline cessation, compared with continued smoking, reduce lung cancer
+# after year 1 through year 20?
+# Analysis question: How does inaccurate recording of cessation change
+# our estimate of that relationship?
+# PICO-T (I/E is the exposure; no cessation programme is assigned).
+# P: People aged 30–65 with a smoking history in the teaching clinic cohort.
+# I/E: Baseline cessation (seven-day abstinence at the baseline visit).
+# C: Continued smoking at baseline.
+# O: Lung cancer.
+# T: Cancer after year 1 through year 20.
+#
+# Examine how inaccurate cessation recording changes the estimated association.
+# Sensitivity and specificity describe accuracy; narrow CIs do not remove bias.
+
+# Analysis 2. DAG and adjustment plan
 # Create a recorded measure using stated accuracy assumptions, check it,
 # then compare equally adjusted models using original and recorded exposure.
 # Identify the measurement structure
@@ -89,11 +102,24 @@ dag <- dagitty('dag {
   stop_smoke -> smoke_rec
 }')
 plot(dag)
+adjustmentSets(dag)
+# C is the proposed baseline adjustment set: age, sex, pack-years and income.
 # In the core simulation, recording accuracy does not depend on lung_ca.
 # The recorded label does not cause cancer; the original exposure may affect it.
 
-# 5. Analysis and presentable tables
-# 5a. Create an imperfect recorded measure
+# Analysis 3. Descriptive analysis and presentation table
+# Describe the cohort before introducing recording error.
+desc <- tbl_summary(
+  dat, by = stop_smoke,
+  include = c(age, sex, pack_yr, income_pc, lung_ca),
+  statistic = list(all_continuous() ~ "{mean} ({sd})",
+                   income_pc ~ "{median} ({p25}, {p75})")
+)
+desc
+# Compare the groups; these summaries do not select adjustment variables.
+
+# Analysis 4. Analysis and interpretation
+# 4a. Create an imperfect recorded measure
 # Sensitivity: chance of recording cessation among people who achieved it.
 # Specificity: chance of recording continued smoking among those still smoking.
 se <- 0.80
@@ -113,7 +139,7 @@ var_label(dat) <- list(
 # These are assumed accuracy values, not estimates from real validation data.
 # The original dat_ori and its CSV remain unchanged; smoke_rec is added to dat.
 
-# 5b. Compare recorded and original exposure
+# 4b. Compare recorded and original exposure
 
 # Descriptive check 1: compare original and recorded cessation status.
 ct <- table(Original = dat$stop_smoke, Recorded = dat$smoke_rec)
@@ -131,7 +157,7 @@ acc <- data.frame(
 )
 acc
 
-# 5c. Display sensitivity and specificity
+# 4c. Display sensitivity and specificity
 ft1 <- flextable(acc) %>%
   set_header_labels(measure = "Measure", assumed = "Assumed", observed = "Observed") %>%
   colformat_double(digits = 3) %>%
@@ -152,7 +178,7 @@ by_ca
 # Observed rates can differ by chance; that alone does not make the mechanism
 # differential. Here recording is independent of cancer given original status.
 
-# 5d. Fit TWO comparable adjusted models
+# 4d. Fit TWO comparable adjusted models
 # Identify clinics once; use the same participants in both models.
 des <- svydesign(ids = ~clinic, weights = ~1, data = dat)
 # Model 1: use the original exposure as a benchmark.
@@ -164,7 +190,7 @@ fit1 <- svyglm(lung_ca ~ smoke_rec + age + sex + pack_yr + income_pc,
 # Same outcome, same people, same adjustment; only the exposure measure changes.
 # The original-status model is a BENCHMARK, not the true causal effect.
 
-# 5e. Display and compare the two exposure ORs
+# 4e. Display and compare the two exposure ORs
 # svyglm accounts for people sharing a clinic; no helper file is needed.
 t0 <- tbl_regression(fit0, exponentiate = TRUE, include = stop_smoke, show_single_row = stop_smoke,
                      label = list(stop_smoke ~ "Cessation vs continued smoking"))
@@ -181,31 +207,32 @@ tab
 # misclassification or include uncertainty about the assumed sensitivity/sp.
 # Do not infer a formal difference between estimates from overlap of their CIs.
 
-# 6. Interpret the results
 # Compare the ORs with 1 and with each other, considering both CIs.
 # A recorded OR closer to 1 illustrates attenuation here, not a universal rule.
 # Statistical significance does not establish accurate measurement.
 # CI overlap is not a formal test of the difference between the two estimates.
 
-# 7. Subsequent analysis decisions
 # If recording is inaccurate, improve measurement or seek validation data.
 # In real work, justify sensitivity/specificity and their possible uncertainty.
 # Do not replace recorded values with unavailable true values in an actual study.
 
-# 8. Write the report
+# Analysis 5. Suggested methods and results
 # Methods: State the recording assumptions and the common adjustment variables.
 # Results: Observed sensitivity = __; specificity = __.
 # Original-status OR = __ (95% CI __ to __); recorded-status OR = __ (__ to __).
+
+# Analysis 6. Conclusion: answer the question
 # Conclusion (answer the question): Using the recorded exposure made the
 # estimated cessation–cancer association __ compared with the original-status model.
 # Inaccurate recording therefore __ our assessment of the proposed effect.
 # The benchmark is not proof of the true causal effect; explain the uncertainty.
 
-# 9. Save the figures and tables
+# Analysis 7. Save tables and figures
 # Convert the accuracy data frame and the gtsummary model table.
 ft2 <- as_flex_table(tab) %>%
   set_table_properties(layout = "autofit", width = 1)
-save_as_docx("Cessation recording accuracy" = ft1,
+save_as_docx("Cohort characteristics" = as_flex_table(desc),
+             "Cessation recording accuracy" = ft1,
              "Original and recorded cessation associations" = ft2,
              path = "output/tables/s06_results.docx")
 writexl::write_xlsx(list(models = as_tibble(tab), accuracy = acc,
@@ -224,7 +251,4 @@ ggsave("output/figures/s06_dag.png",
          scale_y_continuous(expand = expansion(mult = 0.15)),
        width = 7, height = 5, dpi = 300)
 
-# 10. Summary
-# End by answering the opening question, supported by the estimates and their CIs.
-# Accuracy and precision are different. Compare like-for-like models and
-# explain why measurement error may change the substantive interpretation.
+# End of practical
