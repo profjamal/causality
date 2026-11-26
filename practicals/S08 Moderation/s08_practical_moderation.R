@@ -1,6 +1,66 @@
 # STAT 8311 | Session 8: Moderation and Interaction
 
-# 1. Introduction and principle
+# SETUP
+
+# Setup 1. Set the working directory and create folders
+# Edit and run this line for your own practical folder:
+# setwd("~/STAT8311/S08 Moderation")
+getwd()
+dir.create("data")
+dir.create("output")
+dir.create("output/tables")
+dir.create("output/figures")
+
+# Setup 2. Install and load packages
+# Install once if needed:
+# install.packages(c("dplyr", "labelled", "dagitty", "ggdag", "ggplot2",
+#                    "gtsummary", "flextable"))
+library(dplyr)
+library(labelled)
+library(dagitty)
+library(gtsummary)
+library(flextable)
+library(ggdag)
+library(ggplot2)
+
+# Setup 3. Import the raw data: dat_ori
+url <- paste0("https://raw.githubusercontent.com/profjamal/causality/main/",
+              "data/smoking_cohort_demo.csv")
+dat_ori <- read.csv(url)
+# If data already in the folder: dat_ori <- read.csv("data/smoking_cohort.csv")
+
+# Setup 4. Select and rename variables: dat
+# Use the complete cancer outcome to focus on interaction.
+dat <- dat_ori %>%
+  dplyr::select(stop_smoke = cessation, lung_ca = lung_cancer_complete,
+                asbestos = asbestos_exposure, age, sex, pack_yr, income_pc)
+
+# Setup 5. Set variable labels, values and factor levels: dat
+dat <- dat %>%
+  mutate(
+    stop_smoke = factor(stop_smoke, levels = c(0, 1),
+                        labels = c("Continued smoking", "Stopped smoking")),
+    lung_ca = factor(lung_ca, levels = c(0, 1), labels = c("No", "Yes")),
+    sex = factor(sex, levels = c("female", "male"), labels = c("Female", "Male")),
+    asbestos = factor(asbestos, levels = c(0, 1), labels = c("No", "Yes"))
+  )
+var_label(dat) <- list(
+  stop_smoke = "Baseline smoking status",
+  lung_ca = "Later lung cancer",
+  asbestos = "Previous asbestos exposure",
+  age = "Age (years)",
+  sex = "Sex",
+  pack_yr = "Baseline pack-years",
+  income_pc = "Annual income (RM per person)"
+)
+
+
+head(dat, 10)
+
+
+# ANALYSIS
+
+# Analysis 1. Question and PICO-T
 # Causal question: Among people aged 30–65 with a smoking history in the teaching clinic
 # cohort, would baseline cessation, compared with continued smoking, reduce lung cancer
 # after year 1 through year 20; does the effect differ by prior asbestos exposure on the
@@ -22,61 +82,12 @@
 # Categorical predictors: report comparisons within the other variable's groups.
 # Here: cessation x asbestos are categorical; lung cancer is the binary outcome.
 
-# 2. Setup: folders and packages
-# Folders: data/; output/tables/; output/figures/.
-getwd()
-dir.create("data")
-dir.create("output")
-dir.create("output/tables")
-dir.create("output/figures")
-
-# Install once if needed:
-# install.packages(c("dplyr", "labelled", "dagitty", "ggdag", "ggplot2",
-#                    "gtsummary", "flextable"))
-library(dplyr)
-library(labelled)
-library(dagitty)
-library(gtsummary)
-library(flextable)
-library(ggdag)
-library(ggplot2)
-
-# 3. Prepare the data
-# 3a. Import the cohort; then select variables and set their coding.
-url <- paste0("https://raw.githubusercontent.com/profjamal/causality/main/",
-              "data/smoking_cohort_demo.csv")
-dat_ori <- read.csv(url)
-# If data already in the folder: dat_ori <- read.csv("data/smoking_cohort.csv")
-
-# Use the complete cancer outcome to focus on interaction.
-dat <- dat_ori %>%
-  dplyr::select(stop_smoke = cessation, lung_ca = lung_cancer_complete,
-                asbestos = asbestos_exposure, age, sex, pack_yr, income_pc) %>%
-  mutate(
-    stop_smoke = factor(stop_smoke, levels = c(0, 1),
-                        labels = c("Continued smoking", "Stopped smoking")),
-    lung_ca = factor(lung_ca, levels = c(0, 1), labels = c("No", "Yes")),
-    sex = factor(sex, levels = c("female", "male"), labels = c("Female", "Male")),
-    asbestos = factor(asbestos, levels = c(0, 1), labels = c("No", "Yes"))
-  )
-var_label(dat) <- list(
-  stop_smoke = "Baseline smoking status",
-  lung_ca = "Later lung cancer",
-  asbestos = "Previous asbestos exposure",
-  age = "Age (years)",
-  sex = "Sex",
-  pack_yr = "Baseline pack-years",
-  income_pc = "Annual income (RM per person)"
-)
-
-head(dat, 10)
-
-# 4. Statistical plan and causal structure
+# Analysis 2. DAG and adjustment plan
 # Four analysis steps:
-# 1. Describe cancer by smoking group, overall and within asbestos groups.
-# 2. Fit the adjusted outcome model with interaction.
-# 3. Present and assess the interaction term using gtsummary.
-# 4. Present the adjusted cessation OR in each asbestos group.
+# - Describe cancer by smoking group, overall and within asbestos groups.
+# - Fit the adjusted outcome model with interaction.
+# - Present and assess the interaction term using gtsummary.
+# - Present the adjusted cessation OR in each asbestos group.
 # C = age, sex, baseline pack-years and annual income per person.
 
 # Structure A: ordinary causal DAG - identify adjustment with this diagram.
@@ -118,8 +129,8 @@ dag_int <- dagitty('dag {
 plot(dag_int)
 # interaction represents stop_smoke × asbestos; the drawing does not prove it exists.
 
-# 5. Analysis and presentable tables
-# 5a. Step 1: describe lung cancer in the comparison groups
+# Analysis 3. Descriptive analysis and presentation table
+# 3a. Step 1: describe lung cancer in the comparison groups
 # Descriptive check 1: overall comparison.
 tab_group <- dat %>%
   tbl_summary(
@@ -151,7 +162,7 @@ tab_cancer
 # Use the interaction model below to compare the effects between asbestos groups.
 
 
-# 5b. Describe baseline characteristics
+# 3b. Describe baseline characteristics
 # Mean (SD) for age and pack-years; median (Q1, Q3) for income; n (%) for categories.
 tab_desc <- dat %>%
   tbl_summary(
@@ -164,8 +175,8 @@ tab_desc <- dat %>%
   modify_caption("Baseline characteristics by previous asbestos exposure")
 tab_desc
 
-
-# 5c. Step 2: fit the adjusted model with interaction
+# Analysis 4. Analysis and interpretation
+# 4a. Step 2: fit the adjusted model with interaction
 # * includes cessation, asbestos and their interaction.
 # family = binomial() fits logistic regression for the binary cancer outcome.
 fit <- glm(lung_ca ~ stop_smoke * asbestos + age + sex + pack_yr + income_pc,
@@ -175,7 +186,7 @@ summary(fit)
 # The cessation coefficient applies to asbestos = No.
 # The asbestos coefficient applies to Continued smoking. Neither is an overall effect.
 
-# 5d. Step 3: present and assess the interaction term
+# 4b. Step 3: present and assess the interaction term
 # gtsummary reads the fitted model directly and displays ORs, CIs and p-values.
 tab_int <- tbl_regression(
   fit, exponentiate = TRUE,
@@ -187,7 +198,6 @@ tab_int
 # This is the RATIO of cessation ORs: asbestos Yes / No. Null = 1.
 # It tests whether the cessation OR differs between the two asbestos groups.
 
-# 6. Interpret the interaction result
 # If p < 0.05: evidence that the ORs differ. Retain the interaction and report
 # the cessation OR in EACH asbestos group, plus their interaction comparison.
 # If p >= 0.05: no clear evidence of a difference. Examine the CI for uncertainty;
@@ -197,14 +207,13 @@ tab_int
 # and uncertainty justify that assumption, not just because p >= 0.05.
 # Here the interaction is supported, so keep the interaction model.
 
-# 7. Step 4: present the adjusted cessation OR in each asbestos group
-# 7a. Asbestos = No: use the original model's reference group.
+# 4c. Asbestos = No: use the original model's reference group.
 tab_no <- tbl_regression(
   fit, exponentiate = TRUE, include = stop_smoke,
   show_single_row = stop_smoke
 )
 
-# 7b. Asbestos = Yes: change the reference and refit the SAME model.
+# 4d. Asbestos = Yes: change the reference and refit the SAME model.
 dat_yes <- dat %>%
   mutate(asbestos = relevel(asbestos, ref = "Yes"))
 fit_yes <- update(fit, data = dat_yes)
@@ -215,7 +224,7 @@ tab_yes <- tbl_regression(
 # Changing the reference changes the coefficient's meaning, not fitted risks.
 # Both group ORs use all participants and retain the main effects and interaction.
 
-# 7c. Compare the two group ORs side by side. The interaction table is separate.
+# 4e. Compare the two group ORs side by side. The interaction table is separate.
 tab_res <- tbl_merge(
   list(tab_no, tab_yes),
   tab_spanner = c("**Asbestos: No**", "**Asbestos: Yes**")
@@ -235,17 +244,18 @@ tab_res
 # This is interaction on the ODDS scale; it need not hold on other scales.
 # Do not infer a group difference from one subgroup being significant and the other not.
 
-# 8. Write the report
+# Analysis 5. Suggested methods and results
 # Methods: State exposure coding, moderator reference, covariates and interaction.
 # Results: Cessation OR without asbestos = __ (95% CI __ to __);
 # with asbestos = __ (__ to __); ratio of ORs = __ (__ to __), p = __.
+
+# Analysis 6. Conclusion: answer the question
 # Conclusion (answer the question): The cessation–cancer association was
 # [stronger / weaker / not clearly different] in those with prior asbestos exposure,
 # on the odds-ratio scale. Use the interaction estimate and CI to support this
 # answer; a causal interpretation requires the stated assumptions.
 
-# 9. Save the figures and tables
-
+# Analysis 7. Save tables and figures
 ft_group <- as_flex_table(tab_group) %>%
   fontsize(size = 10, part = "all") %>%
   set_table_properties(layout = "autofit", width = 1)
@@ -292,7 +302,4 @@ p_int <- ggdag(dag_int, node = FALSE, text = FALSE) +
 ggsave("output/figures/s08_interaction_dag.png", p_int,
        width = 9, height = 6, dpi = 300)
 
-# 10. Summary
-# End by answering the opening question, supported by the estimates and their CIs.
-# Describe the groups, fit the interaction model, assess interaction, then report
-# each group OR. Use the DAG for adjustment; do not compare subgroup p-values.
+# End of practical
