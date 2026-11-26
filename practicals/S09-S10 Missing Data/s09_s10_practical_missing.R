@@ -1,32 +1,20 @@
 # STAT 8311 | Sessions 9 and 10: Missing Data
 
-# 1. Introduction and principle
-# Causal question: Among people aged 30–65 with a smoking history in the teaching clinic
-# cohort, would baseline cessation, compared with continued smoking, reduce lung cancer
-# after year 1 through year 20?
-# Analysis question: What can we conclude about that effect when some cancer
-# outcomes are missing, under the assumptions of each handling method?
-# PICO-T (I/E is the exposure; no cessation programme is assigned).
-# P: People aged 30–65 with a smoking history in the teaching clinic cohort.
-# I/E: Baseline cessation (seven-day abstinence at the baseline visit).
-# C: Continued smoking at baseline.
-# O: Lung cancer.
-# T: Cancer after year 1 through year 20.
-#
-# Missing cancer outcomes can reduce precision and create selection bias.
-# MCAR, MAR and MNAR describe missingness assumptions; data alone cannot prove MAR.
-# Compare complete cases, observation weighting and multiple imputation.
+# SETUP
 
-# 2. Setup: folders and packages
-# Folders: data/; output/tables/; output/figures/.
+# Setup 1. Set the working directory and create folders
+# Edit and run this line for your own practical folder:
+# setwd("~/STAT8311/S09-S10 Missing Data")
 getwd()
 dir.create("data")
 dir.create("output")
 dir.create("output/tables")
 dir.create("output/figures")
+
+# Setup 2. Install and load packages
 # Install once if needed:
 # install.packages(c("dplyr", "labelled", "ggplot2", "gtsummary", "flextable", "mice",
-#                    "writexl", "survey"))
+#                    "writexl", "survey", "dagitty", "ggdag"))
 library(dplyr)
 library(labelled)
 library(ggplot2)
@@ -35,20 +23,26 @@ library(flextable)
 library(mice)
 library(writexl)
 library(survey)
+library(dagitty)
+library(ggdag)
 
-# 3. Prepare the data
-# 3a. Import the cohort; then select variables and set their coding.
+# Setup 3. Import the raw data: dat_ori
 url <- paste0("https://raw.githubusercontent.com/profjamal/causality/main/",
               "data/smoking_cohort_demo.csv")
 dat_ori <- read.csv(url)
 # Offline: dat_ori <- read.csv("data/smoking_cohort.csv")
+
+# Setup 4. Select and rename variables: dat
 # lung_ca: 0 = no cancer; 1 = cancer; NA = outcome not observed.
 # income_pc: annual household income / members, RM/person/year.
 # clinic identifies participants sharing a clinic.
 dat <- dat_ori %>%
   dplyr::select(stop_smoke = cessation, lung_ca = lung_cancer,
                 age, sex, pack_yr, income_pc,
-                asbestos = asbestos_exposure, clinic = clinic_id) %>%
+                asbestos = asbestos_exposure, clinic = clinic_id)
+
+# Setup 5. Set variable labels, values and factor levels: dat
+dat <- dat %>%
   mutate(
     stop_smoke = factor(stop_smoke, levels = c(0, 1),
                         labels = c("Continued smoking", "Stopped smoking")),
@@ -70,13 +64,65 @@ var_label(dat) <- list(
 # Do not select lung_cancer_complete or unmeasured_health_risk.
 # Researchers would not have these hidden values in an actual study.
 
-# 4. Statistical plan
+head(dat, 10)
+
+dat$obs <- ifelse(is.na(dat$lung_ca), 0, 1)
+# obs: 1 = observed; 0 = missing. It is not the cancer outcome.
+# Missing outcomes are not zero and must not be recoded as no cancer.
+dat$status <- factor(dat$obs, levels = c(1, 0),
+                     labels = c("Observed", "Missing"))
+
+var_label(dat) <- list(obs = "Outcome observed", status = "Outcome observation status")
+
+
+# ANALYSIS
+
+# Analysis 1. Question and PICO-T
+# Causal question: Among people aged 30–65 with a smoking history in the teaching clinic
+# cohort, would baseline cessation, compared with continued smoking, reduce lung cancer
+# after year 1 through year 20?
+# Analysis question: What can we conclude about that effect when some cancer
+# outcomes are missing, under the assumptions of each handling method?
+# PICO-T (I/E is the exposure; no cessation programme is assigned).
+# P: People aged 30–65 with a smoking history in the teaching clinic cohort.
+# I/E: Baseline cessation (seven-day abstinence at the baseline visit).
+# C: Continued smoking at baseline.
+# O: Lung cancer.
+# T: Cancer after year 1 through year 20.
+#
+# Missing cancer outcomes can reduce precision and create selection bias.
+# MCAR, MAR and MNAR describe missingness assumptions; data alone cannot prove MAR.
+# Compare complete cases, observation weighting and multiple imputation.
+
+# Analysis 2. DAG and adjustment plan
+# C = age, sex, previous pack-years and annual income per person.
+# obs = 1 means the outcome is observed. U is an unmeasured health-risk cause.
+dag <- dagitty('dag {
+  stop_smoke [exposure, pos="0,0"]
+  lung_ca [outcome, pos="5,0"]
+  C [pos="1.5,2"]
+  U [latent, pos="3.5,-2"]
+  obs [selected, pos="5,-2"]
+  C -> stop_smoke
+  C -> lung_ca
+  C -> obs
+  U -> stop_smoke
+  U -> lung_ca
+  U -> obs
+  stop_smoke -> lung_ca
+  stop_smoke -> obs
+}')
+plot(dag)
+adjustmentSets(dag)
+# U is unmeasured: this DAG has no sufficient measured adjustment set.
+# The working models adjust for C; they cannot guarantee removal of bias.
+# Weighting/imputation need assumptions about why outcomes are missing.
 # Describe missingness, examine observation probabilities and fit the same
 # adjusted cancer model using complete cases, observation weights and imputation.
 # Inspect imputation diagnostics before comparing ORs and CIs across methods.
 
-# 5. Analysis and presentable tables
-# 5a. Count missing outcomes and compare observed with missing groups.
+# Analysis 3. Descriptive analysis and presentation table
+# 3a. Count missing outcomes and compare observed with missing groups.
 # Perform descriptive checks before choosing a method.
 # Descriptive check 1: count missing values in every selected variable.
 nrow(dat)
@@ -88,14 +134,8 @@ stopifnot(!anyNA(dat[c("stop_smoke", "age", "sex", "pack_yr", "income_pc",
                      "asbestos", "clinic")]))
 
 # Descriptive check 2: count observed and missing cancer outcomes.
-dat$obs <- ifelse(is.na(dat$lung_ca), 0, 1)
-# obs: 1 = observed; 0 = missing. It is not the cancer outcome.
 table(dat$obs)
 round(100 * mean(dat$obs == 0), 1)
-# Missing outcomes are not zero and must not be recoded as no cancer.
-dat$status <- factor(dat$obs, levels = c(1, 0),
-                     labels = c("Observed", "Missing"))
-
 # Descriptive check 3: compare people with and without observed outcomes.
 # Income is right-skewed, so use median (Q1, Q3).
 desc <- tbl_summary(
@@ -127,7 +167,8 @@ p1
 # Selecting observed cases can change the population and induce selection bias.
 # Discuss: what reasons for missing outcomes would you collect in a real study?
 
-# 5b. Method 1: fit the outcome model in complete cases
+# Analysis 4. Analysis and interpretation
+# 4a. Method 1: fit the outcome model in complete cases
 dat_cc <- dat %>% filter(obs == 1)
 nrow(dat_cc)
 # Compare nrow(dat) and nrow(dat_cc): how many outcomes are unavailable?
@@ -140,7 +181,7 @@ fit.dat_cc <- svyglm(lung_ca ~ stop_smoke + age + sex + pack_yr + income_pc,
 # Complete-case validity does not always require MCAR; it depends on the model
 # and selection process. Do not assume it is unbiased here.
 
-# 5c. Method 2: model observation, calculate weights and fit the weighted model
+# 4b. Method 2: model observation, calculate weights and fit the weighted model
 # Model observation using information available for ALL participants.
 # Do not include lung_ca, which is missing for the very people being modelled.
 fit.obs <- glm(obs ~ stop_smoke + age + sex + pack_yr + income_pc + clinic,
@@ -159,7 +200,7 @@ fit.wt <- svyglm(lung_ca ~ stop_smoke + age + sex + pack_yr + income_pc,
 # quasibinomial avoids a fractional-weight binomial warning.
 # svyglm supplies uncertainty allowing for clinic clustering.
 
-# 5d. Method 3: impute, fit the same model in each dataset and pool
+# 4c. Method 3: impute, fit the same model in each dataset and pool
 # Include the analysis variables and measured auxiliary predictors.
 # clinic is a factor, allowing different imputation intercepts by clinic.
 # Exclude obs/status: obs=0 identifies exactly the people whose outcome is NA.
@@ -190,7 +231,7 @@ summary(pooled, conf.int = TRUE, exponentiate = TRUE)
 # Pool model coefficients and uncertainty, not the completed datasets or ORs.
 # Twenty imputations are for class. Check stability and adequacy in real work.
 
-# 5e. Inspect imputation behaviour and display the three estimates
+# 4d. Inspect imputation behaviour and display the three estimates
 # Use mice's own diagnostic plot; no separate helper script is needed.
 p2 <- plot(imp, layout = c(2, 1))
 p2
@@ -214,18 +255,16 @@ tab
 # Similar results do not prove MAR or adequate confounding control.
 # Do not choose the method giving the smallest p-value or desired result.
 
-# 6. Interpret the results
 # Compare effect size, CI and participants used, not just statistical significance.
 # CI includes 1: uncertainty about the association, not proof of no association.
 # Agreement between methods does not prove MAR or remove unmeasured bias.
 
-# 7. Subsequent analysis decisions
 # Review low observation probabilities, extreme weights and imputation warnings.
 # Choose a method using the design, missingness reasons and plausible assumptions.
 # If MAR is doubtful, acknowledge that limitation and plan a justified sensitivity
 # analysis in real work; no optional advanced analysis is required here.
 
-# 8. Write the report
+# Analysis 5. Suggested methods and results
 # Methods: Describe the missing variable, number/percentage missing and reasons.
 # Explain the working missingness assumption and the information supporting it.
 # State the analysis, observation and imputation predictors; report diagnostics.
@@ -233,6 +272,8 @@ tab
 # Complete-case OR = __ (95% CI __ to __).
 # Weighted OR = __ (95% CI __ to __).
 # MI OR = __ (95% CI __ to __).
+
+# Analysis 6. Conclusion: answer the question
 # Conclusion (answer the question): Accounting for missing outcomes using __,
 # cessation was associated with __ cancer odds compared with continued smoking.
 # The results were [consistent with a protective effect / inconclusive], under __
@@ -243,7 +284,7 @@ tab
 # Consider plausible MNAR assumptions in a real study; no extra analysis is
 # required for this practical. Never use hidden simulation truth to fill NAs.
 
-# 9. Save the figures and tables
+# Analysis 7. Save tables and figures
 ft1 <- as_flex_table(desc)
 ft2 <- as_flex_table(tab) %>%
   set_table_properties(layout = "autofit", width = 1)
@@ -267,7 +308,12 @@ ggsave("output/figures/s09_s10_imputation_trace.png",
        grid::grid.grabExpr(print(p2), width = 7, height = 4),
        width = 7, height = 4, dpi = 300, bg = "white")
 
-# 10. Summary
-# End by answering the opening question, supported by the estimates and their CIs.
-# Describe missingness, justify assumptions, inspect diagnostics and compare methods.
-# Missing outcomes are not zero; no method automatically removes missing-data bias.
+
+p_dag <- ggdag(dag, node = FALSE, text = FALSE) +
+  geom_dag_label(aes(label = name), fill = "white", size = 4) +
+  theme_dag() +
+  scale_x_continuous(expand = expansion(mult = 0.25)) +
+  scale_y_continuous(expand = expansion(mult = 0.15))
+ggsave("output/figures/s09_s10_dag.png", p_dag, width = 7, height = 5, dpi = 300)
+
+# End of practical
