@@ -44,6 +44,7 @@ dat <- dat %>%
     sex = factor(sex, levels = c("female", "male"), labels = c("Female", "Male")),
     asbestos = factor(asbestos, levels = c(0, 1), labels = c("No", "Yes"))
   )
+
 var_label(dat) <- list(
   stop_smoke = "Baseline smoking status",
   lung_ca = "Later lung cancer",
@@ -162,7 +163,44 @@ tab_cancer
 # Use the interaction model below to compare the effects between asbestos groups.
 
 
-# 3b. Describe baseline characteristics
+# 3b. Make the within-group comparison explicit
+risk <- dat %>%
+  group_by(asbestos, stop_smoke) %>%
+  summarise(cancer_pct = 100 * mean(lung_ca == "Yes"), .groups = "drop")
+
+comp <- dat %>%
+  group_by(asbestos) %>%
+  summarise(
+    continued = 100 * mean(lung_ca[stop_smoke == "Continued smoking"] == "Yes"),
+    stopped = 100 * mean(lung_ca[stop_smoke == "Stopped smoking"] == "Yes"),
+    .groups = "drop"
+  ) %>%
+  mutate(difference = continued - stopped)
+
+ft_risk <- flextable(comp) %>%
+  set_header_labels(asbestos = "Asbestos", continued = "Continued: cancer %",
+                    stopped = "Stopped: cancer %", difference = "Difference, pp") %>%
+  colformat_double(digits = 1) %>%
+  autofit() %>%
+  add_footer_lines("Difference = continued minus stopped, in percentage points (pp). Unadjusted observed comparisons.")
+ft_risk
+
+p_risk <- ggplot(risk, aes(x = stop_smoke, y = cancer_pct, fill = stop_smoke)) +
+  geom_col(width = 0.6) +
+  geom_text(aes(label = sprintf("%.1f%%", cancer_pct)), vjust = -0.4) +
+  facet_wrap(~asbestos, labeller = label_both) +
+  expand_limits(y = 40) +
+  labs(x = "Baseline smoking status", y = "Participants with lung cancer (%)",
+       title = "Compare continued with stopped smoking within each asbestos group") +
+  theme_minimal() +
+  theme(legend.position = "none")
+p_risk
+# Compare the two bars WITHIN each panel, then compare those differences.
+# Similar cancer percentages among quitters do not mean similar cessation effects.
+# These are unadjusted risk differences; they do not test adjusted OR interaction.
+# The model below compares adjusted cessation ORs on the odds scale.
+
+# 3c. Describe baseline characteristics
 # Mean (SD) for age and pack-years; median (Q1, Q3) for income; n (%) for categories.
 tab_desc <- dat %>%
   tbl_summary(
@@ -256,6 +294,10 @@ tab_res
 # answer; a causal interpretation requires the stated assumptions.
 
 # Analysis 7. Save tables and figures
+save_as_docx(ft_risk, path = "output/tables/s08_risk_comparison.docx")
+ggsave("output/figures/s08_risk_comparison.png", p_risk,
+       width = 9, height = 5, dpi = 300)
+
 ft_group <- as_flex_table(tab_group) %>%
   fontsize(size = 10, part = "all") %>%
   set_table_properties(layout = "autofit", width = 1)
@@ -303,3 +345,4 @@ ggsave("output/figures/s08_interaction_dag.png", p_int,
        width = 9, height = 6, dpi = 300)
 
 # End of practical
+
